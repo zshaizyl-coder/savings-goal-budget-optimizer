@@ -1,0 +1,50 @@
+# Secrets and local environments
+.env
+.env.*
+!.env.example
+venv/
+.venv/
+
+# Python / test / analysis caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# Frontend dependencies and build output
+node_modules/
+frontend/dist/
+
+# IDE and OS files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Private source data and uploads
+data/private/*
+!data/private/.gitkeep
+uploads/private/*
+!uploads/private/.gitkeep
+
+# Real financial statements must never enter Git history
+微信支付账单流水文件(20251001-20261001)_20261011223057.xlsx
+*微信支付账单流水文件*.xlsx
+*支付宝*账单*.xls*
+*银行卡*流水*.xls*
+
+# Local databases and derived private artifacts
+*.db
+*.sqlite
+*.sqlite3
+data/processed/private/
+experiments/private/
+
+# Temporary office files
+~$*.xls*
+
