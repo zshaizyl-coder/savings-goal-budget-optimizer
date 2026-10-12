@@ -292,7 +292,7 @@ def build_report(raw: pd.DataFrame, data: pd.DataFrame, structure: WorkbookStruc
         active_weeks = int((gross_series > 0).sum())
         frequency = int(category_count.get(category, 0))
         share = float(row["消费净额"] / total_net) if total_net else math.nan
-        if active_weeks >= 30 and frequency >= 50 and share >= 0.05:
+        if category != "其他消费" and active_weeks >= 30 and frequency >= 50 and share >= 0.05:
             category_model_candidates.append(category)
         if active_weeks < 20 or frequency < 30:
             sparse_categories.append(category)
@@ -408,7 +408,7 @@ python scripts/wechat_eda.py --input <私有账单路径> --report docs/data-eda
 
 - 金额占比基于核心消费净额；退款按同一关键词规则尽量回冲类别。
 - “较稳定/较波动/稀疏”只描述观测频率和统计波动，不表示该类别是必须支出或可削减支出。
-- “其他消费”占比较高时，说明微信字段不足以支持可靠自动分类，V1 必须提供分类确认和修正机制。
+- “其他消费”占比较高时，说明微信字段不足以支持可靠自动分类，V1 必须提供分类确认和修正机制。该集合虽然覆盖充足，但内部含义异质，不作为独立类别模型候选。
 - 可能适合未来单独测试预测的类别：{model_candidate_text}。
 - 当前样本太少、不值得单独建模的类别：{sparse_text}。
 
@@ -428,7 +428,7 @@ python scripts/wechat_eda.py --input <私有账单路径> --report docs/data-eda
 3. **是否存在大量 0 消费周：**零毛消费周 {zero_weeks} 个，占 {pct(zero_weeks / len(weekly) if len(weekly) else math.nan)}，{'不存在大量零周' if len(weekly) and zero_weeks / len(weekly) <= 0.1 else '零周比例需要在建模中专门处理'}。
 4. **周度消费是否足够稳定：**周度变异系数 {number(weekly_cv)}，波动{variability}。可建立基线并量化不确定性，但不应承诺精确点预测。
 5. **总消费是否适合预测：**适合作为首要预测对象，因为覆盖最完整；应同时保留包含/排除统计大额交易的敏感性分析。
-6. **适合单独预测的主要类别：**{model_candidate_text}。最终资格仍需滚动回测确认。
+6. **适合单独预测的主要类别：**{model_candidate_text}。“其他消费”应优先重新分类，无法拆分的部分并入总量预测，不把异质集合强行作为一个行为类别。最终资格仍需滚动回测确认。
 7. **样本太少的类别：**{sparse_text}。这些类别宜合并为“其他”或只做规则预算，不单独训练模型。
 8. **预测未来 1/2/4 周：**1 周预测最有依据；2 周可以测试但不确定性更高；4 周仅适合提供区间或月度规划参考，不能当作精确承诺。
 9. **是否使用滚动预测：**应该。每周加入最新实际值并重新估计，既符合执行周期，也能适应临时支出和行为变化。
@@ -486,4 +486,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

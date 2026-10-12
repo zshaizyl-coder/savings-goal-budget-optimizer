@@ -4,7 +4,7 @@
 
 ## 当前状态
 
-当前处于规划基线阶段（阶段 0—2）。阶段 0 工程骨架已建立。真实微信账单尚未在工作区中找到，因此真实 EDA、V1 需求冻结和 `v0.1-planning-baseline` 里程碑尚不能完成。
+阶段 0—2 已形成规划基线：工程骨架、真实微信账单聚合 EDA 和 V1 需求已经完成。真实账单从外部私有附件原地只读，没有复制到仓库。项目当前停止在阶段 2，尚未开始核心数据管道开发。
 
 ## 设计原则
 
@@ -35,5 +35,8 @@ uploads/private/     本地私有上传区（Git 忽略）
 
 ## 计划技术栈
 
-技术栈目前作为候选方案保留：Vue 3、Element Plus、ECharts、FastAPI、Pandas、NumPy、statsmodels、scikit-learn、SciPy 或 CVXPY、SQLite。最终模型和优化器将在真实 EDA 与后续实验后确定。
+V1 采用 Vue 3、Element Plus、ECharts、FastAPI、Pandas、NumPy、statsmodels、scikit-learn、SciPy 或 CVXPY、SQLite。SQLite 足以满足单用户本科原型；最终预测模型和优化目标函数仍须由后续真实滚动实验确定。
 
+## 当前数据结论
+
+真实微信账单包含 2,445 条有效记录和 51 个完整自然周。周度消费连续但波动较高，适合以简单基线为核心进行短期滚动预测，不适合复杂深度学习或直接用月度样本训练复杂模型。详见 `docs/data-eda-report.md` 和 `docs/requirements-v1.md`。
