@@ -1,0 +1,34 @@
+{
+  "dataset_version": "stage5-consumption-v1",
+  "standard_transactions": 2445,
+  "complete_weeks": 51,
+  "weekly_statistics": {
+    "complete_weeks": 51,
+    "mean_minor": 75540.4705882353,
+    "median_minor": 50890.0,
+    "std_minor": 109112.36660257222,
+    "cv": 1.4444226485870664,
+    "minimum_minor": 3840.0,
+    "maximum_minor": 752296.0,
+    "q1_minor": 27418.5,
+    "q3_minor": 77588.0,
+    "iqr_minor": 50169.5,
+    "skewness": 5.092439829186001
+  },
+  "anomaly_weeks": 4,
+  "large_transaction_thresholds": {
+    "q95_minor": 7399,
+    "iqr_upper_minor": 4775,
+    "recommended_minor": 7399
+  },
+  "baseline_reconciliation": {
+    "maximum_monthly_difference_minor": 0,
+    "gross_difference_minor": 0,
+    "refund_difference_minor": 0,
+    "net_difference_minor": 0
+  },
+  "forecast_go_categories": [
+    "food",
+    "shopping"
+  ]
+}
