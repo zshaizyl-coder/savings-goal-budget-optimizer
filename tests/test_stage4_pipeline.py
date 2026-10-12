@@ -11,7 +11,8 @@ from alembic.config import Config
 from sqlalchemy import create_engine, func, inspect, select
 from sqlalchemy.orm import sessionmaker
 
-from backend.app.models import ImportBatch, Transaction, TransactionLink
+from backend.app.models import Category, ImportBatch, Transaction, TransactionLink
+from backend.app.repositories.analysis import TransactionAnalysisRepository
 from backend.app.parsers.wechat import WechatBillParser
 from backend.app.pipeline.category_rules import classify_text
 from backend.app.pipeline.consumption import signed_consumption_minor
@@ -183,6 +184,21 @@ class MigrationAndImportTests(unittest.TestCase):
         columns = {column["name"] for column in inspect(self.engine).get_columns("transactions")}
         forbidden = {"merchant", "description", "transaction_id", "merchant_order_id", "note", "payment_method"}
         self.assertFalse(columns & forbidden)
+
+    def test_user_category_override_is_loaded_without_changing_source_category(self):
+        self._import(SAMPLE)
+        with self.Session.begin() as session:
+            transaction = session.scalar(select(Transaction).where(Transaction.source_type_code == "unknown"))
+            shopping = session.scalar(select(Category).where(Category.code == "shopping"))
+            original_category = transaction.original_category
+            transaction.user_category_id = shopping.id
+            transaction_id = transaction.id
+        with self.Session() as session:
+            view = next(item for item in TransactionAnalysisRepository(session).list_transactions(1) if item.id == transaction_id)
+            persisted = session.get(Transaction, transaction_id)
+            self.assertEqual(view.user_category_code, "shopping")
+            self.assertEqual(view.effective_category_code, "shopping")
+            self.assertEqual(persisted.original_category, original_category)
 
 
 class PrivacyIndependenceTests(unittest.TestCase):
