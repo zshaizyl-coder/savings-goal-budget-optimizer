@@ -221,3 +221,13 @@
 - `budget_plan_items` 一行表示某周某类别的自然预测、推荐预算、调整额和当时适用约束。
 - `financial_events` 保存突发支出、临时收入、收入变化、目标变化和约束变化；预算计划通过 `budget_plan_events` 和 `parent_plan_id` 形成可追踪链。
 - 不可行预算仍保存 `budget_plan`，`is_feasible=false`，并保存原因代码、最高可达目标、收入缺口或建议日期；不生成虚假的明细预算。
+
+## 12. 阶段 4 已实现字段与规则
+
+首个 ORM/迁移只实现导入链必需实体：User、ImportBatch、Category、CategoryMapping、Transaction 和 TransactionLink。统一 Transaction 已实际承载真实微信数据；未来支付宝和银行卡仍写入同一表。
+
+来源层字段只存在于 `WechatSourceTransaction`：完整交易对象、商品、备注、支付方式和原始交易号在生成 HMAC 与分类后丢弃。持久化交易保留 `amount_minor`、UTC 时间、方向、业务流、来源类型代码、自动/用户类别引用、批次、指纹、退款关系和候选规范交易关系。
+
+真实退款验证表明，来源文件没有可直接证明原消费关系的统一原交易 ID。当前唯一高置信候选才设置 `related_transaction_id`；无法确认的退款仍以独立负向交易保留。该实现比用时间和金额强行一一匹配更保守。
+
+分类质量报告同时输出 `other` 的笔数比例和消费毛额比例，避免只看一个口径误判。用户类别字段已预留但阶段 4 没有实现前端修改功能。

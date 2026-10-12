@@ -50,3 +50,21 @@
 - 需求影响：没有修改 `requirements-v1.md`；阶段 3 只将其落实为可扩展结构和接口。
 - Git commits：`docs: design system architecture and data model`；`chore: scaffold backend architecture`。
 - 里程碑：本阶段不创建 `v0.2-data-pipeline`，需等待阶段 4 和阶段 5 完成。
+
+### 阶段 4：微信账单解析、清洗、标准化与持久化
+
+- Git 起点：`main` 干净，阶段 3 已合并，`v0.1-planning-baseline` 存在且无 `v0.2-data-pipeline`；真实 Excel、私有目录和数据库均未被跟踪；创建 `feature/data-pipeline`。
+- 格式依据：重新读取 EDA 和真实文件；确认 1 个工作表、17 行说明、第 18 行表头、11 个字段和 2,445 行。Parser 使用字段集合识别表头，不依赖固定行号。
+- 数据链：实现 Parser -> 来源 DTO -> Normalizer -> 标准交易草稿 -> Service -> Repository -> SQLite。Parser 无 SQL，规则集中维护，单行错误不终止整批。
+- 金额与时间：Decimal 转整数分；UTC 持久化；默认 `Asia/Shanghai`；周一至周日口径通过月末、年末和跨年周测试。
+- 资金流：方向与业务类型分离；核心消费 1,470 条、消费退款 103 条、普通转账 654 条、转账退款 48 条、余额转移 89 条、红包相关 59 条、收入候选 7 条、其他 15 条。仅有微信时不自动认定内部转账。
+- 退款：净消费以消费为正、消费退款为负；103 条退款中 29 条达到唯一高置信关联，74 条保留为未关联退款并产生聚合告警。
+- 分类：复用阶段 1 有真实依据的通用关键词，文本只在内存中使用。其他类别占核心消费笔数 71.0%、毛额 49.9%，未用猜测规则或机器学习强行降低。
+- 幂等：首次真实导入 2,445 条；第二、第三次各新增 0、重复 2,445。模拟重叠文件中精确重复跳过，不同来源 ID 的同时间同金额记录保留并进入 `possible_duplicate/pending`。
+- 数据库：实现 SQLAlchemy 2.x 六个导入实体和 Alembic `0001_stage4`；空库升级、降级、再升级通过。
+- 隐私：真实账单只在附件位置原地只读；不保存完整对象、商品、备注、支付方式或交易号；模拟 XLSX 可提交；私有验证库位于忽略目录。
+- 测试：全仓 30 项 `unittest` 通过。模拟 1,000/5,000/10,000 条持久化约 0.068/0.278/0.571 秒，无需引入并行或大数据框架。
+- 代码审查：未发现 Parser 内 SQL、金额 float 持久化、真实路径硬编码、隐私文本日志、散落业务规则或异常静默吞掉。
+- Git commits：`cd5d3d9 feat: add transaction persistence schema and migration`；`9cdaead feat: implement idempotent wechat import pipeline`；阶段文档提交为 `docs: document wechat import pipeline`。
+- 遗留风险：退款类别级回冲依赖关联，当前 74 条未自动关联；其他类别仍异质；微信单源无法确认内部转账或完整收入。阶段 5 分析必须显式展示这些口径和敏感性。
+- 里程碑：阶段 4 不创建 `v0.2-data-pipeline`，等待阶段 5 完成。
