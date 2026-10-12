@@ -1,51 +1,274 @@
-# 算法设计草案
+# 算法模块与稳定接口设计
 
-## 当前状态
+## 1. 阶段 3 边界
 
-本文件保留研究框架和算法接口，不在阶段 0 写死最终模型、目标函数或权重。
+本阶段只定义数据契约、算法边界和版本要求，不实现预测模型、可行性公式、预算目标函数或滚动再规划算法。
 
-## 数据处理框架
+所有算法必须满足：
 
-```text
-源账单 → 源适配器 → 字段校验 → 交易标准化 → 资金流标记
-      → 日度序列 → 周度特征与月度汇总
+- 输入为领域 DTO 或聚合序列，不接收 FastAPI Request、SQLAlchemy Session 或 Excel 路径。
+- 输出为结构化结果，不直接写数据库。
+- 业务服务负责读取、调用、事务和持久化。
+- 每次运行记录数据截止时间、算法名称和版本。
+- 金额边界使用整数分；内部数值计算可以使用浮点，但输出必须按统一规则量化。
+
+## 2. 共用领域契约
+
+```python
+MoneyMinor = int
+
+WeeklyActual(
+    week_start: date,
+    target_key: str,              # total 或 category:<code>
+    net_spend_minor: MoneyMinor,
+    is_complete_week: bool,
+    is_abnormal: bool,
+)
+
+WeeklyPredictionItem(
+    week_start: date,
+    target_key: str,
+    predicted_minor: MoneyMinor,
+    lower_minor: MoneyMinor | None,
+    upper_minor: MoneyMinor | None,
+)
 ```
 
-内部转账、充值、提现、退款和撤销交易需要独立标记。是否进入消费、收入或现金流分析由明确规则决定，不依赖金额正负的简单判断。
+周起始日必须是用户时区中的周一。算法不自行解释时区，调用前由分析服务应用统一 `CalendarPolicy`。
 
-## 预测研究框架
+## 3. 周度预测接口
 
-- 基线：历史均值、最近 4 周移动平均。
-- 候选：简单指数平滑、Holt、简单 ARIMA、带滞后特征的线性回归。
-- 验证：扩展窗口或滚动窗口的时序回测，分别评价未来 1、2、4 周。
-- 指标：至少保留 MAE；对接近零或零消费序列谨慎使用百分比误差。
-- 粒度：先评估总消费，再评估数据量足够且业务可解释的主要类别。
+```python
+class WeeklyForecaster(Protocol):
+    def forecast(self, request: ForecastRequest) -> ForecastResult: ...
 
-真实 EDA 已确认 51 个完整周、零消费周为 0，但周度变异系数为 1.44、滞后 1 周相关系数为 -0.09。四个高异常周贡献完整周净消费的 36.9%。因此总消费可做短期预测，但必须以 1 周滚动预测和基线为核心，2 周作为辅助，4 周仅作规划参考。类别首轮只单独测试“餐饮、购物”；“其他消费”先重分类，无法拆分的部分并入总量预测。候选模型是否保留仍由滚动回测决定。
+ForecastRequest(
+    history: Sequence[WeeklyActual],
+    horizon_weeks: int,           # V1 重点 1/2/4
+    target_keys: tuple[str, ...],
+    data_cutoff_utc: datetime,
+    model_name: str,
+    model_version: str,
+    parameters: Mapping[str, JsonValue],
+)
 
-## 储蓄目标可行性框架
+ForecastResult(
+    model_name: str,
+    model_version: str,
+    train_start: date,
+    train_end: date,
+    data_cutoff_utc: datetime,
+    items: tuple[WeeklyPredictionItem, ...],
+    warnings: tuple[str, ...],
+)
+```
 
-给定当前存款、预测/设定收入、目标金额、截止日期、固定支出和分类最低预算，计算在最低支出约束下的最大可积累资金。若目标不可行，输出至少一种可解释替代量：最高可达目标、收入缺口、最早合理日期或需要放宽的约束。
+约束：
 
-不确定收入和消费的安全边际如何表达，留待后续实验决定。
+- 历史按周排序且不能包含截止点之后的数据。
+- 不完整边界周默认不进入训练。
+- 预测总量为首要目标；类别首轮只测试餐饮和购物。
+- “其他消费”不作为独立行为序列强行建模。
+- 若历史不足，返回结构化 `InsufficientHistory`，不静默改用其他模型。
+- 基线和候选模型使用同一接口，服务层可以替换而无需改变 API。
 
-## 预算优化研究框架
+## 4. 模型评价接口
 
-约束候选包括储蓄目标、周期现金流、分类最低预算、固定支出、调整意愿和非负预算。研究目标是减小推荐预算相对个人正常消费习惯的偏离。
+```python
+class ForecastEvaluator(Protocol):
+    def evaluate(self, request: EvaluationRequest) -> EvaluationResult: ...
 
-加权平方偏差可作为候选目标函数，但最终形式、尺度处理和权重估计必须经过实验、敏感性分析和可解释性评审后确定。
+EvaluationRequest(
+    history: Sequence[WeeklyActual],
+    forecaster_spec: ForecasterSpec,
+    horizon_weeks: int,
+    initial_train_weeks: int,
+    window_mode: Literal["expanding", "rolling"],
+)
 
-由于规则分类后“其他消费”仍占核心净消费 49.6%，优化器不能直接把自动类别当作可靠约束依据。预算前必须允许用户确认类别、固定支出和最低预算。
+EvaluationResult(
+    model_name: str,
+    model_version: str,
+    target_key: str,
+    train_range: DateRange,
+    test_range: DateRange,
+    sample_count: int,
+    mae_minor: int,
+    rmse_minor: int,
+    mape_bps: int | None,
+    smape_bps: int | None,
+    anomaly_mae_minor: int | None,
+)
+```
 
-## 对照接口
+V1 强制比较历史均值、最近 4 周移动平均和简单指数平滑。Holt、低阶 ARIMA、滞后线性回归只有在滚动回测优于基线且稳定时保留。百分比指标遇到零值可以为空，不能用零替代不可计算结果。
 
-- 方法 A：统一比例预算削减。
-- 方法 B：按历史消费占比分配预算。
-- 方法 C：个性化动态预算优化。
-- 机制对照：固定预算与滚动预算优化。
+## 5. 可行性判断接口
 
-预测器、预算策略和再规划器需使用可替换接口，并记录算法版本与输入数据截止时间。
+```python
+class FeasibilityEvaluator(Protocol):
+    def evaluate(self, request: FeasibilityRequest) -> FeasibilityResult: ...
 
-## 滚动再规划原则
+FeasibilityRequest(
+    goal: GoalSnapshot,
+    financial_snapshot: FinancialSnapshot,
+    income_schedule: Sequence[IncomePeriod],
+    predictions: Sequence[WeeklyPredictionItem],
+    constraints: Sequence[BudgetConstraintSpec],
+    planning_weeks: Sequence[date],
+)
 
-每周开始或状态事件发生后：锁定历史实际值，更新当前存款与未来收入/约束，只重算未来周和对应月度汇总，再次判断原目标可行性。事件包括大额消费、额外收入、收入下降、目标金额/日期变化和最低预算变化。
+FeasibilityResult(
+    feasible: bool,
+    reason_code: str | None,
+    maximum_achievable_target_minor: int | None,
+    required_additional_income_minor: int | None,
+    recommended_deadline: date | None,
+    binding_constraints: tuple[ConstraintReference, ...],
+    explanations: tuple[str, ...],
+)
+```
+
+可行性判断必须先于优化。不可行时不得通过突破最低预算、忽略固定支出或伪造收入来继续生成“可行”明细。
+
+## 6. 预算优化接口
+
+```python
+class BudgetOptimizer(Protocol):
+    strategy_name: str
+    algorithm_version: str
+
+    def optimize(self, request: BudgetOptimizationRequest) -> BudgetOptimizationResult: ...
+
+BudgetOptimizationRequest(
+    goal: GoalSnapshot,
+    financial_snapshot: FinancialSnapshot,
+    income_schedule: Sequence[IncomePeriod],
+    predictions: Sequence[WeeklyPredictionItem],
+    constraints: Sequence[BudgetConstraintSpec],
+    feasibility: FeasibilityResult,
+    adjustment_mode: Literal[
+        "goal_priority", "balanced", "life_stability", "custom"
+    ],
+    planning_weeks: Sequence[date],
+)
+
+BudgetOptimizationResult(
+    feasible: bool,
+    strategy_name: str,
+    algorithm_version: str,
+    expected_final_savings_minor: int | None,
+    items: tuple[BudgetRecommendation, ...],
+    diagnostics: tuple[Diagnostic, ...],
+    infeasibility: FeasibilityResult | None,
+)
+
+BudgetRecommendation(
+    week_start: date,
+    category_code: str,
+    natural_spend_minor: int,
+    recommended_budget_minor: int,
+    adjustment_minor: int,
+    applied_minimum_minor: int,
+    applied_maximum_minor: int | None,
+    adjustability_bps: int,
+    explanation_code: str,
+)
+```
+
+同一接口实现三种策略：
+
+- `ProportionalReductionOptimizer`：统一比例削减；
+- `HistoricalShareOptimizer`：按历史占比分配；
+- `PersonalizedOptimizer`：候选个性化约束优化。
+
+加权平方偏差仍只是候选目标，阶段 7 通过实验和敏感性分析决定。接口不把目标函数写死。
+
+调整度 `adjustability_bps` 的语义：
+
+- 0：不得偏离固定/自然基准（同时受最小最大约束）；
+- 数值越大：允许优化器在约束内承担更多调整；
+- UI 低/中/高是预设映射，自定义使用明确整数值；
+- 它是优化权重或边界输入，不是心理学分数。
+
+## 7. 滚动再规划接口
+
+```python
+class BudgetReplanner(Protocol):
+    def replan(self, request: ReplanRequest) -> ReplanResult: ...
+
+ReplanRequest(
+    previous_plan: BudgetPlanSnapshot,
+    locked_actuals: Sequence[WeeklyActual],
+    events: Sequence[FinancialEventSpec],
+    current_snapshot: FinancialSnapshot,
+    remaining_goal: GoalSnapshot,
+    current_constraints: Sequence[BudgetConstraintSpec],
+    latest_predictions: Sequence[WeeklyPredictionItem],
+    next_open_week: date,
+    strategy_name: str,
+    adjustment_mode: str,
+)
+
+ReplanResult(
+    parent_plan_id: int,
+    new_version: int,
+    trigger_event_ids: tuple[int, ...],
+    locked_through_week: date,
+    optimization_result: BudgetOptimizationResult,
+    future_delta_minor: int,
+    explanations: tuple[str, ...],
+)
+```
+
+不变量：
+
+1. `next_open_week` 之前的预算和实际数据完全锁定。
+2. 新版本必须指向旧版本，旧版本保留。
+3. 事件、快照、目标和约束必须属于同一用户。
+4. 重新规划重新执行可行性判断。
+5. 收入或目标变化不能被伪装成消费预测变化。
+
+## 8. 分析与算法的数据访问
+
+业务服务负责：
+
+1. 通过仓储按用户和截止点读取标准交易；
+2. 生成无隐私的日/周聚合；
+3. 构造算法请求 DTO；
+4. 调用算法接口；
+5. 在事务内保存运行、结果和版本关系。
+
+算法模块不得：
+
+- 自己打开 SQLite；
+- 查询 ORM 模型；
+- 读取上传文件；
+- 根据前端字段名分支；
+- 写入日志中的交易明细；
+- 修改历史 Transaction 或 BudgetPlan。
+
+## 9. 版本与可复现性
+
+每个结果至少携带：
+
+- `algorithm_name/model_name`；
+- `algorithm_version/model_version`；
+- 数据截止时间；
+- 训练/规划区间；
+- 参数版本；
+- 分类规则版本；
+- 周口径版本；
+- 输入目标和约束快照引用。
+
+数据库保存结构化元数据和聚合结果，不保存完整训练数据副本。相同数据截止点、算法版本和参数应能重现同一确定性结果；随机算法必须记录种子，但 V1 不优先使用随机复杂模型。
+
+## 10. 当前未冻结事项
+
+- 个性化优化的最终目标函数和类别权重；
+- 大额异常在“习惯基准”中的降权方式；
+- 周预测到跨月预算的最终分摊权重；
+- 预测区间计算方法；
+- SciPy 与 CVXPY 的最终选择。
+
+这些事项只能由后续真实回测、优化实验和敏感性分析确定。

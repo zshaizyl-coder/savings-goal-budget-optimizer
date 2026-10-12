@@ -4,7 +4,7 @@
 
 ## 当前状态
 
-阶段 0—2 已形成规划基线：工程骨架、真实微信账单聚合 EDA 和 V1 需求已经完成。真实账单从外部私有附件原地只读，没有复制到仓库。项目当前停止在阶段 2，尚未开始核心数据管道开发。
+阶段 0—2 已形成规划基线，阶段 3 已完成技术架构、统一数据模型、数据库 ER、API 草案和算法接口设计。真实账单从外部私有附件原地只读，没有复制到仓库。项目尚未开始正式账单解析器、预测模型、预算优化或 Vue 页面开发。
 
 ## 设计原则
 
@@ -18,7 +18,7 @@
 ## 目录
 
 ```text
-backend/             FastAPI 后端（后续阶段）
+backend/             FastAPI 模块边界与框架无关领域契约
 frontend/            Vue 3 前端（后续阶段）
 data/sample/         可提交的脱敏或模拟样本
 data/private/        本地真实数据（Git 忽略）
@@ -35,7 +35,7 @@ uploads/private/     本地私有上传区（Git 忽略）
 
 ## 计划技术栈
 
-V1 采用 Vue 3、Element Plus、ECharts、FastAPI、Pandas、NumPy、statsmodels、scikit-learn、SciPy 或 CVXPY、SQLite。SQLite 足以满足单用户本科原型；最终预测模型和优化目标函数仍须由后续真实滚动实验确定。
+V1 采用 Vue 3、Element Plus、ECharts、FastAPI、SQLAlchemy、Pandas、NumPy 和 SQLite。statsmodels 与 scikit-learn 在预测实验阶段按需引入；优化优先评估 SciPy，只有明确凸优化收益时才引入 CVXPY。最终预测模型和优化目标函数仍须由后续真实滚动实验确定。
 
 ## 当前数据结论
 
