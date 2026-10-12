@@ -139,3 +139,75 @@ class TransactionLink(Base):
     evidence_codes: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, nullable=False)
     resolved_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
+
+
+class UserCategoryRule(Base):
+    """A user-confirmed category for a pseudonymous counterparty.
+
+    Raw merchant text is intentionally not stored. The HMAC fingerprint is
+    stable only inside this installation and cannot be reversed.
+    """
+
+    __tablename__ = "user_category_rules"
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id", "source", "counterparty_fingerprint",
+            name="uq_user_category_rule_counterparty",
+        ),
+        Index("ix_user_category_rules_user_active", "user_id", "is_active"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False,
+    )
+    source: Mapped[str] = mapped_column(String(20), nullable=False)
+    counterparty_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    category_id: Mapped[int] = mapped_column(ForeignKey("categories.id"), nullable=False)
+    origin: Mapped[str] = mapped_column(String(24), nullable=False, default="manual")
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        UTCDateTime(), default=utc_now, onupdate=utc_now, nullable=False,
+    )
+
+
+class ClassificationSuggestion(Base):
+    """Auditable model suggestion without prompt, response or merchant text."""
+
+    __tablename__ = "classification_suggestions"
+    __table_args__ = (
+        CheckConstraint(
+            "confidence_bps >= 0 AND confidence_bps <= 10000",
+            name="ck_classification_suggestion_confidence",
+        ),
+        CheckConstraint(
+            "status IN ('pending','accepted','rejected')",
+            name="ck_classification_suggestion_status",
+        ),
+        UniqueConstraint(
+            "user_id", "transaction_id", "provider", "model_name", "prompt_version",
+            name="uq_classification_suggestion_run",
+        ),
+        Index("ix_classification_suggestions_user_status", "user_id", "status"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False,
+    )
+    transaction_id: Mapped[int] = mapped_column(
+        ForeignKey("transactions.id", ondelete="CASCADE"), nullable=False,
+    )
+    provider: Mapped[str] = mapped_column(String(40), nullable=False)
+    model_name: Mapped[str] = mapped_column(String(80), nullable=False)
+    prompt_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    suggested_category_id: Mapped[int] = mapped_column(
+        ForeignKey("categories.id"), nullable=False,
+    )
+    confidence_bps: Mapped[int] = mapped_column(Integer, nullable=False)
+    requires_review: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="pending")
+    evidence_codes: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, nullable=False)
+    reviewed_at: Mapped[datetime | None] = mapped_column(UTCDateTime())

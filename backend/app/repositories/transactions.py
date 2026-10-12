@@ -28,11 +28,13 @@ class TransactionRepository:
     def insert_drafts(
         self, user_id: int, import_batch_id: int, drafts: list[StandardTransactionDraft],
         category_ids: dict[str, int],
+        user_category_ids_by_counterparty: dict[str, int] | None = None,
     ) -> tuple[list[tuple[StandardTransactionDraft, Transaction]], int]:
         existing = self.existing_fingerprints(user_id, "wechat", {d.source_record_fingerprint for d in drafts})
         seen = set(existing)
         inserted: list[tuple[StandardTransactionDraft, Transaction]] = []
         duplicate_count = 0
+        user_rules = user_category_ids_by_counterparty or {}
         for draft in drafts:
             if draft.source_record_fingerprint in seen:
                 duplicate_count += 1
@@ -46,6 +48,7 @@ class TransactionRepository:
                 normalized_status=draft.normalized_status.value,
                 source_type_code=draft.source_type_code, original_category=draft.original_category,
                 suggested_category_id=category_ids[draft.suggested_category_code],
+                user_category_id=user_rules.get(draft.counterparty_fingerprint or ""),
                 classification_version=draft.classification_version,
                 counterparty_fingerprint=draft.counterparty_fingerprint,
                 source_account_fingerprint=draft.source_account_fingerprint,
@@ -111,6 +114,7 @@ class TransactionRepository:
                 refund.related_transaction_id = original.id
                 # A confirmed refund must offset the same analytical category.
                 refund.suggested_category_id = original.suggested_category_id
+                refund.user_category_id = original.user_category_id
                 self.session.add(TransactionLink(
                     user_id=user_id, transaction_a_id=original.id, transaction_b_id=refund.id,
                     link_type="refund_of", confidence_bps=9000, resolution_status="confirmed",

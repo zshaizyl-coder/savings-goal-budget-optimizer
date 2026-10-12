@@ -14,6 +14,7 @@ from backend.app.pipeline.fingerprints import file_sha256
 from backend.app.pipeline.issues import DataIssue, FatalParseError, IssueSeverity
 from backend.app.pipeline.wechat_normalizer import WechatTransactionNormalizer
 from backend.app.repositories.categories import CategoryRepository
+from backend.app.repositories.classification import UserCategoryRuleRepository
 from backend.app.repositories.import_batches import ImportBatchRepository
 from backend.app.repositories.transactions import TransactionRepository
 from backend.app.repositories.users import UserRepository
@@ -100,7 +101,10 @@ class WechatImportService:
         categories = CategoryRepository(self.session).ensure_defaults()
         category_ids = {code: category.id for code, category in categories.items()}
         transaction_repo = TransactionRepository(self.session)
-        inserted, duplicate_rows = transaction_repo.insert_drafts(user.id, batch.id, drafts, category_ids)
+        user_rules = UserCategoryRuleRepository(self.session).active_category_ids(user.id, "wechat")
+        inserted, duplicate_rows = transaction_repo.insert_drafts(
+            user.id, batch.id, drafts, category_ids, user_rules,
+        )
         possible_links = transaction_repo.add_possible_duplicate_links(user.id, inserted)
         linked_refunds, unresolved_refunds = transaction_repo.link_refunds(user.id, inserted)
         if possible_links:
