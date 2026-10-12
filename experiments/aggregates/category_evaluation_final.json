@@ -1,0 +1,254 @@
+{
+  "dataset_version": "stage55-category-evaluation-v1",
+  "review_groups": 155,
+  "validation_sample_groups": 50,
+  "labeled_validation_groups": 50,
+  "applied_counterparty_rules": 28,
+  "rule_metrics": {
+    "status": "evaluated",
+    "labeled_groups": 50,
+    "accuracy": 0.44,
+    "amount_weighted_accuracy": 0.329439911901907,
+    "per_category": {
+      "communications": {
+        "support": 2,
+        "recall": 0.0
+      },
+      "education": {
+        "support": 3,
+        "recall": 0.0
+      },
+      "entertainment": {
+        "support": 3,
+        "recall": 0.0
+      },
+      "food": {
+        "support": 10,
+        "recall": 0.0
+      },
+      "human_relations": {
+        "support": 1,
+        "recall": 0.0
+      },
+      "life_services": {
+        "support": 3,
+        "recall": 0.0
+      },
+      "other": {
+        "support": 22,
+        "recall": 1.0
+      },
+      "shopping": {
+        "support": 5,
+        "recall": 0.0
+      },
+      "transport": {
+        "support": 1,
+        "recall": 0.0
+      }
+    },
+    "confusion": {
+      "communications": {
+        "other": 2
+      },
+      "education": {
+        "other": 3
+      },
+      "entertainment": {
+        "other": 3
+      },
+      "food": {
+        "other": 10
+      },
+      "human_relations": {
+        "other": 1
+      },
+      "life_services": {
+        "other": 3
+      },
+      "other": {
+        "other": 22
+      },
+      "shopping": {
+        "other": 5
+      },
+      "transport": {
+        "other": 1
+      }
+    }
+  },
+  "model_candidate_metrics_all": {
+    "status": "evaluated",
+    "labeled_groups": 50,
+    "accuracy": 0.68,
+    "amount_weighted_accuracy": 0.4319992844824936,
+    "per_category": {
+      "communications": {
+        "support": 2,
+        "recall": 1.0
+      },
+      "education": {
+        "support": 3,
+        "recall": 0.6666666666666666
+      },
+      "entertainment": {
+        "support": 3,
+        "recall": 0.0
+      },
+      "food": {
+        "support": 10,
+        "recall": 0.4
+      },
+      "human_relations": {
+        "support": 1,
+        "recall": 0.0
+      },
+      "life_services": {
+        "support": 3,
+        "recall": 0.3333333333333333
+      },
+      "other": {
+        "support": 22,
+        "recall": 1.0
+      },
+      "shopping": {
+        "support": 5,
+        "recall": 0.4
+      },
+      "transport": {
+        "support": 1,
+        "recall": 1.0
+      }
+    },
+    "confusion": {
+      "communications": {
+        "communications": 2
+      },
+      "education": {
+        "other": 1,
+        "education": 2
+      },
+      "entertainment": {
+        "other": 3
+      },
+      "food": {
+        "other": 5,
+        "food": 4,
+        "life_services": 1
+      },
+      "human_relations": {
+        "other": 1
+      },
+      "life_services": {
+        "other": 2,
+        "life_services": 1
+      },
+      "other": {
+        "other": 22
+      },
+      "shopping": {
+        "other": 3,
+        "shopping": 2
+      },
+      "transport": {
+        "transport": 1
+      }
+    }
+  },
+  "model_candidate_metrics_when_proposed": {
+    "status": "evaluated",
+    "labeled_groups": 13,
+    "accuracy": 0.9230769230769231,
+    "amount_weighted_accuracy": 0.7871883983352641,
+    "per_category": {
+      "communications": {
+        "support": 2,
+        "recall": 1.0
+      },
+      "education": {
+        "support": 2,
+        "recall": 1.0
+      },
+      "food": {
+        "support": 5,
+        "recall": 0.8
+      },
+      "life_services": {
+        "support": 1,
+        "recall": 1.0
+      },
+      "shopping": {
+        "support": 2,
+        "recall": 1.0
+      },
+      "transport": {
+        "support": 1,
+        "recall": 1.0
+      }
+    },
+    "confusion": {
+      "communications": {
+        "communications": 2
+      },
+      "education": {
+        "education": 2
+      },
+      "food": {
+        "food": 4,
+        "life_services": 1
+      },
+      "life_services": {
+        "life_services": 1
+      },
+      "shopping": {
+        "shopping": 2
+      },
+      "transport": {
+        "transport": 1
+      }
+    }
+  },
+  "model_candidate_coverage": 0.26,
+  "rule_high_amount_risk": {
+    "status": "evaluated",
+    "labeled_groups": 20,
+    "misclassified_amount_ratio": 0.6747874129975153
+  },
+  "model_high_amount_risk": {
+    "status": "evaluated",
+    "labeled_groups": 20,
+    "misclassified_amount_ratio": 0.5951849622667716
+  },
+  "after_human_confirmation": {
+    "other_count": 242,
+    "other_amount_minor": 228180,
+    "other_count_ratio": 0.16462585034013605,
+    "other_amount_ratio": 0.05390663648386416
+  },
+  "category_quality_after_human": {
+    "food": {
+      "transaction_count": 301,
+      "gross_amount_share": 0.16602951091858628,
+      "active_weeks": 48,
+      "zero_week_ratio": 0.05882352941176472,
+      "weekly_cv": 0.6846122565913084,
+      "qualification": "A"
+    },
+    "shopping": {
+      "transaction_count": 251,
+      "gross_amount_share": 0.2758726104296986,
+      "active_weeks": 50,
+      "zero_week_ratio": 0.019607843137254943,
+      "weekly_cv": 1.5990080508811786,
+      "qualification": "A"
+    },
+    "other": {
+      "transaction_count": 242,
+      "gross_amount_share": 0.05390663648386416,
+      "active_weeks": 50,
+      "zero_week_ratio": 0.019607843137254943,
+      "weekly_cv": 1.0433598068475918,
+      "qualification": "C"
+    }
+  }
+}

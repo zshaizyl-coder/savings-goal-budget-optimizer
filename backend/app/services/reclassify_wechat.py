@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from backend.app.classification.types import ClassificationContext
+from backend.app.classification.evaluation import CategoryReviewItem
 from backend.app.models import Category, Transaction
 from backend.app.parsers.wechat import WechatBillParser
 from backend.app.pipeline.category_rules import CATEGORY_RULE_VERSION
@@ -145,3 +146,30 @@ class WechatSourceReclassificationService:
                 recurring_count=recurrence.get(item.counterparty_fingerprint, 1),
             ))
         return contexts
+
+    def build_other_review_items(
+        self,
+        path: str | Path,
+        *,
+        user_id: int,
+    ) -> list[CategoryReviewItem]:
+        """Build a transient private review queue without persisting source text."""
+        contexts = self.build_other_review_contexts(path, user_id=user_id)
+        transaction_ids = [item.transaction_id for item in contexts]
+        if not transaction_ids:
+            return []
+        fingerprints = dict(self.session.execute(
+            select(Transaction.id, Transaction.counterparty_fingerprint).where(
+                Transaction.id.in_(transaction_ids),
+                Transaction.user_id == user_id,
+            )
+        ).all())
+        return [CategoryReviewItem(
+            transaction_id=item.transaction_id,
+            counterparty_fingerprint=fingerprints.get(item.transaction_id) or "",
+            source_type_code=item.source_type_code,
+            occurred_at_utc=item.occurred_at_utc,
+            amount_minor=item.amount_minor,
+            counterparty_hint=item.counterparty_hint,
+            description_hint=item.description_hint,
+        ) for item in contexts]

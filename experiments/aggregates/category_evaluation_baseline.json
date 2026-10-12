@@ -1,0 +1,115 @@
+{
+  "dataset_version": "stage55-category-evaluation-v1",
+  "baseline_rules": {
+    "core_consumption_count": 1470,
+    "core_consumption_amount_minor": 4232874,
+    "other_count": 1044,
+    "other_amount_minor": 2113989,
+    "other_count_ratio": 0.710204081632653,
+    "other_amount_ratio": 0.4994216695323319,
+    "category_counts": {
+      "communications": 11,
+      "education": 53,
+      "entertainment": 1,
+      "food": 111,
+      "health": 38,
+      "housing": 7,
+      "human_relations": 1,
+      "life_services": 22,
+      "other": 1044,
+      "shopping": 115,
+      "transport": 67
+    },
+    "category_amounts_minor": {
+      "communications": 81572,
+      "education": 676285,
+      "entertainment": 4000,
+      "food": 256493,
+      "health": 473526,
+      "housing": 75680,
+      "human_relations": 1,
+      "life_services": 18720,
+      "other": 2113989,
+      "shopping": 231945,
+      "transport": 300663
+    }
+  },
+  "current_rules": {
+    "core_consumption_count": 1470,
+    "core_consumption_amount_minor": 4232874,
+    "other_count": 578,
+    "other_amount_minor": 468095,
+    "other_count_ratio": 0.39319727891156464,
+    "other_amount_ratio": 0.1105856210225015,
+    "category_counts": {
+      "communications": 16,
+      "education": 90,
+      "entertainment": 32,
+      "food": 238,
+      "health": 44,
+      "housing": 7,
+      "human_relations": 2,
+      "life_services": 18,
+      "other": 578,
+      "shopping": 244,
+      "transport": 201
+    },
+    "category_amounts_minor": {
+      "communications": 97292,
+      "education": 735258,
+      "entertainment": 87694,
+      "food": 567741,
+      "health": 521196,
+      "housing": 60880,
+      "human_relations": 8889,
+      "life_services": 35393,
+      "other": 468095,
+      "shopping": 1160734,
+      "transport": 489702
+    }
+  },
+  "rule_reclassification": {
+    "matched_rows": 2445,
+    "unmatched_rows": 0,
+    "changed_transactions": 4,
+    "other_before_count": 578,
+    "other_after_count": 578,
+    "other_before_amount_minor": 468095,
+    "other_after_amount_minor": 468095,
+    "resulting_category_counts": {
+      "communications": 16,
+      "education": 91,
+      "entertainment": 33,
+      "food": 239,
+      "health": 46,
+      "housing": 10,
+      "human_relations": 61,
+      "life_services": 18,
+      "other": 1462,
+      "shopping": 252,
+      "transport": 217
+    }
+  },
+  "remaining_other_groups": 155,
+  "validation_sample_groups": 50,
+  "sample_group_counts": {
+    "top_amount": 20,
+    "high_frequency": 10,
+    "low_amount": 10,
+    "random": 10
+  },
+  "top20_other_amount_share": 0.6921351435071941,
+  "cloud_eligible_groups": 95,
+  "model_experiment": {
+    "status": "offline_candidates_generated",
+    "candidate_groups": 13,
+    "validation_group_coverage": 0.26,
+    "validation_amount_coverage": 0.1302856759544193,
+    "api_called": false,
+    "accuracy_status": "awaiting_human_labels"
+  },
+  "human_evaluation": {
+    "status": "awaiting_human_labels",
+    "labeled_groups": 0
+  }
+}
