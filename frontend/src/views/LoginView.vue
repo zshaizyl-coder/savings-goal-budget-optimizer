@@ -1,0 +1,6 @@
+<template><div class="login-page"><el-card class="login-card"><h1>储蓄目标预算系统</h1><p class="muted">用自己的消费历史，制定可解释的储蓄计划</p><el-tabs v-model="mode"><el-tab-pane label="登录" name="login"/><el-tab-pane label="注册" name="register"/></el-tabs><el-form label-position="top" @submit.prevent="submit"><el-form-item label="用户名"><el-input v-model="form.username" autocomplete="username"/></el-form-item><el-form-item label="密码"><el-input v-model="form.password" type="password" show-password autocomplete="current-password"/></el-form-item><el-alert v-if="error" :title="error" type="error" :closable="false"/><el-button class="section" type="primary" native-type="submit" :loading="loading" style="width:100%">{{ mode==='login'?'登录':'创建账号' }}</el-button></el-form></el-card></div></template>
+<script setup>
+import { reactive, ref } from 'vue'; import { useRouter } from 'vue-router'; import { api, saveToken } from '../api/client.js'
+const router=useRouter(), mode=ref('login'), loading=ref(false), error=ref(''); const form=reactive({username:'',password:''})
+async function submit(){ loading.value=true; error.value=''; try{const data=await api.post(`/auth/${mode.value}`,form);saveToken(data.access_token);router.push('/')}catch(e){error.value=e.message}finally{loading.value=false} }
+</script>

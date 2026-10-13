@@ -15,6 +15,7 @@ __pycache__/
 
 # Frontend dependencies and build output
 node_modules/
+.pnpm-store/
 frontend/dist/
 
 # IDE and OS files
@@ -42,9 +43,9 @@ uploads/private/*
 *.db
 *.sqlite
 *.sqlite3
+frontend/coverage/
 data/processed/private/
 experiments/private/
 
 # Temporary office files
 ~$*.xls*
-
