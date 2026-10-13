@@ -1,0 +1,4 @@
+name,feasible,strategy,mode,expected_final_savings_minor,natural_spending_minor,recommended_spending_minor,habit_deviation_bps,weekly_volatility_minor,minimum_violation_count,risk_level,reason_code,maximum_achievable_target_minor,required_additional_income_minor,reduction_ratio
+goal_priority,True,personalized,goal_priority,1184324,906480,815676,778,0,0,HIGH_RISK,,,,0.10017209425469953
+balanced,True,personalized,balanced,1180004,906480,819996,775,0,0,HIGH_RISK,,,,0.09540640720148263
+life_stability,True,personalized,life_stability,1180000,906480,820000,952,0,0,HIGH_RISK,,,,0.09540199452828524

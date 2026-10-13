@@ -1,0 +1,4 @@
+name,feasible,strategy,mode,expected_final_savings_minor,natural_spending_minor,recommended_spending_minor,habit_deviation_bps,weekly_volatility_minor,minimum_violation_count,risk_level,reason_code,maximum_achievable_target_minor,required_additional_income_minor,reduction_ratio
+uniform_proportional,True,proportional,balanced,1250000,906480,750000,1726,0,0,HIGH_RISK,,,,0.17262377548318775
+historical_share,True,historical_share,balanced,1250000,906480,750000,1729,0,0,HIGH_RISK,,,,0.17262377548318775
+personalized,True,personalized,balanced,1250000,906480,750000,1420,0,0,HIGH_RISK,,,,0.17262377548318775
