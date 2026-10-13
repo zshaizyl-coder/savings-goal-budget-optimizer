@@ -13,6 +13,7 @@ from .contracts import (
 )
 from .enums import (
     AdjustmentMode,
+    BudgetPlanStatus,
     BudgetStrategy,
     Direction,
     FinancialEventType,
@@ -20,10 +21,12 @@ from .enums import (
     ImpactScope,
     NormalizedStatus,
     PaymentSource,
+    ReplanTriggerSource,
 )
 
 __all__ = [
     "AdjustmentMode",
+    "BudgetPlanStatus",
     "BudgetConstraintSpec",
     "BudgetPlanItem",
     "BudgetPlanVersion",
@@ -38,6 +41,7 @@ __all__ = [
     "NormalizedStatus",
     "NormalizedTransaction",
     "PaymentSource",
+    "ReplanTriggerSource",
     "SavingsGoalSpec",
     "WeeklyPredictionItem",
 ]

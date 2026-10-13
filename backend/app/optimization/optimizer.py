@@ -209,15 +209,35 @@ class PersonalizedBudgetOptimizer:
             bounds.append((float(lower), float(upper)))
             weights.append(1 / max(0.05, constraint.adjustability_bps / 10_000 + 0.05) ** power)
             scales.append(max(mu, constraint.minimum_budget_minor, 100))
+        cumulative_caps = tuple(sorted(request.cumulative_spending_caps))
+        if any(deadline not in request.planning_weeks or deadline.weekday() != 0 or cap < 0
+               for deadline, cap in cumulative_caps):
+            raise ValueError("invalid_cumulative_spending_cap")
         minimum_mode_total = round(sum(lower for lower, _ in bounds))
         if minimum_mode_total > spending_cap:
             return _mode_infeasible(request, income, minimum_mode_total)
+        for deadline, cap in cumulative_caps:
+            prefix_minimum = round(sum(
+                bounds[index][0] for index, key in enumerate(keys) if key[0] <= deadline
+            ))
+            if prefix_minimum > cap:
+                return _infeasible(
+                    request, BudgetStrategy.PERSONALIZED, request.feasibility,
+                    "RECOVERY_HORIZON_INFEASIBLE",
+                )
         x0 = np.asarray([min(upper, natural[key]) for key, (_lower, upper) in zip(keys, bounds)], dtype=float)
         if x0.sum() > spending_cap:
             lowers = np.asarray([lower for lower, _upper in bounds])
             room = x0.sum() - lowers.sum()
             ratio = (spending_cap - lowers.sum()) / room if room else 0.0
             x0 = lowers + np.clip(ratio, 0.0, 1.0) * (x0 - lowers)
+        for deadline, cap in cumulative_caps:
+            indices = [index for index, key in enumerate(keys) if key[0] <= deadline]
+            excess = float(x0[indices].sum() - cap)
+            if excess > 0:
+                slack = np.asarray([x0[index] - bounds[index][0] for index in indices])
+                if slack.sum() > 0:
+                    x0[indices] -= np.minimum(slack, excess * slack / slack.sum())
         smoothing = (MODE_SMOOTHING[request.adjustment_mode]
                      if self.smoothing_override is None else self.smoothing_override)
         if smoothing < 0:
@@ -252,12 +272,23 @@ class PersonalizedBudgetOptimizer:
 
         constraint_scale = max(float(spending_cap), 1.0)
 
+        constraints = [{
+            "type": "ineq",
+            "fun": lambda x: (spending_cap - float(np.sum(x))) / constraint_scale,
+            "jac": lambda x: -np.ones_like(x) / constraint_scale,
+        }]
+        for deadline, cap in cumulative_caps:
+            mask = np.asarray([key[0] <= deadline for key in keys], dtype=float)
+            cap_scale = max(float(cap), 1.0)
+            constraints.append({
+                "type": "ineq",
+                "fun": lambda x, mask=mask, cap=cap, scale=cap_scale: (
+                    cap - float(mask @ x)
+                ) / scale,
+                "jac": lambda x, mask=mask, scale=cap_scale: -mask / scale,
+            })
         solved = self.solver(objective, x0, jac=gradient, method="SLSQP", bounds=bounds,
-                             constraints=({
-                                 "type": "ineq",
-                                 "fun": lambda x: (spending_cap - float(np.sum(x))) / constraint_scale,
-                                 "jac": lambda x: -np.ones_like(x) / constraint_scale,
-                             },),
+                             constraints=tuple(constraints),
                              options={"maxiter": 500, "ftol": 1e-9})
         if not getattr(solved, "success", False):
             return _infeasible(request, BudgetStrategy.PERSONALIZED, request.feasibility, "SOLVER_FAILURE")
@@ -271,6 +302,23 @@ class PersonalizedBudgetOptimizer:
                 if excess <= 0: break
         if excess > 0:
             return _infeasible(request, BudgetStrategy.PERSONALIZED, request.feasibility, "ROUNDING_RECONCILIATION_FAILURE")
+        for deadline, cap in cumulative_caps:
+            prefix_keys = [key for key in keys if key[0] <= deadline]
+            excess = sum(integer[key] for key in prefix_keys) - cap
+            if excess > 0:
+                for key in sorted(prefix_keys, key=lambda item: integer[item] - bounds[keys.index(item)][0], reverse=True):
+                    index = keys.index(key)
+                    slack = integer[key] - round(bounds[index][0])
+                    cut = min(slack, excess)
+                    integer[key] -= cut
+                    excess -= cut
+                    if excess <= 0:
+                        break
+            if excess > 0:
+                return _infeasible(
+                    request, BudgetStrategy.PERSONALIZED, request.feasibility,
+                    "ROUNDING_RECONCILIATION_FAILURE",
+                )
         return _build_result(request, BudgetStrategy.PERSONALIZED, "personalized-slsqp-v1", integer,
                              ("weighted_normalized_habit_deviation", "weekly_smoothing", "hard_minimums"))
 

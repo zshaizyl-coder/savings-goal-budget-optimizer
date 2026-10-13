@@ -51,10 +51,17 @@ class BudgetStrategy(StrEnum):
 
 
 class FinancialEventType(StrEnum):
+    PLANNED_OVERRUN = "planned_overrun"
+    UNPLANNED_EXPENSE = "unplanned_expense"
+    EXTRA_INCOME = "extra_income"
     UNEXPECTED_EXPENSE = "unexpected_expense"
     TEMPORARY_INCOME = "temporary_income"
     INCOME_DECREASE = "income_decrease"
     INCOME_INCREASE = "income_increase"
+    GOAL_AMOUNT_CHANGE = "goal_amount_change"
+    GOAL_DATE_CHANGE = "goal_date_change"
+    BUDGET_CONSTRAINT_CHANGE = "budget_constraint_change"
+    MANUAL_REPLAN = "manual_replan"
     GOAL_CHANGE = "goal_change"
     CONSTRAINT_CHANGE = "constraint_change"
 
@@ -65,3 +72,17 @@ class ImpactScope(StrEnum):
     GOAL = "goal"
     CONSTRAINT = "constraint"
     ACTUAL_SPEND = "actual_spend"
+
+
+class ReplanTriggerSource(StrEnum):
+    SYSTEM_SUGGESTED = "system_suggested"
+    USER_REQUESTED = "user_requested"
+    EVENT_REQUIRED = "event_required"
+
+
+class BudgetPlanStatus(StrEnum):
+    DRAFT = "draft"
+    ACTIVE = "active"
+    SUPERSEDED = "superseded"
+    COMPLETED = "completed"
+    INFEASIBLE = "infeasible"

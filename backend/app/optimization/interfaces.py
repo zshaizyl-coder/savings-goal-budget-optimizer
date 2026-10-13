@@ -16,7 +16,7 @@ from backend.app.domain.contracts import (
     SavingsGoalSpec,
     WeeklyPredictionItem,
 )
-from backend.app.domain.enums import AdjustmentMode, BudgetStrategy
+from backend.app.domain.enums import AdjustmentMode, BudgetStrategy, ReplanTriggerSource
 from backend.app.forecasting.interfaces import WeeklyActual
 
 
@@ -54,6 +54,7 @@ class BudgetOptimizationRequest:
     feasibility: FeasibilityResult
     adjustment_mode: AdjustmentMode
     planning_weeks: Sequence[date]
+    cumulative_spending_caps: Sequence[tuple[date, int]] = ()
 
 
 @dataclass(frozen=True)
@@ -90,6 +91,36 @@ class ReplanRequest:
     next_open_week: date
     strategy: BudgetStrategy
     adjustment_mode: AdjustmentMode
+    income_schedule: Sequence[IncomeAssumptionSpec] = ()
+    recovery_horizon_weeks: int | None = None
+    trigger_source: ReplanTriggerSource = ReplanTriggerSource.USER_REQUESTED
+    model_selected_through_week: date | None = None
+
+
+@dataclass(frozen=True)
+class PlanDifference:
+    old_expected_final_savings_minor: int | None
+    new_expected_final_savings_minor: int | None
+    old_future_budget_minor: int
+    new_future_budget_minor: int | None
+    total_adjustment_minor: int | None
+    average_weekly_adjustment_minor: int | None
+    category_adjustments_minor: tuple[tuple[str, int], ...] = ()
+    old_risk_level: str | None = None
+    new_risk_level: str | None = None
+    old_target_date: date | None = None
+    new_target_date: date | None = None
+
+
+@dataclass(frozen=True)
+class RecoveryMetrics:
+    recovery_gap_minor: int
+    remaining_savings_gap_minor: int
+    budget_adjustment_total_minor: int | None
+    average_weekly_adjustment_minor: int | None
+    max_category_adjustment_minor: int | None
+    plan_deviation_bps: int | None
+    weeks_to_recover: int | None
 
 
 @dataclass(frozen=True)
@@ -101,6 +132,10 @@ class ReplanResult:
     optimization_result: BudgetOptimizationResult
     future_delta_minor: int
     explanations: tuple[str, ...] = ()
+    status_code: str = "REPLANNED"
+    difference: PlanDifference | None = None
+    recovery_metrics: RecoveryMetrics | None = None
+    model_reevaluation_due: bool = False
 
 
 class FeasibilityEvaluator(Protocol):

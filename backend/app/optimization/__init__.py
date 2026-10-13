@@ -8,6 +8,8 @@ from .interfaces import (
     FeasibilityEvaluator,
     FeasibilityRequest,
     FeasibilityResult,
+    PlanDifference,
+    RecoveryMetrics,
     ReplanRequest,
     ReplanResult,
 )
@@ -20,6 +22,8 @@ __all__ = [
     "FeasibilityEvaluator",
     "FeasibilityRequest",
     "FeasibilityResult",
+    "PlanDifference",
+    "RecoveryMetrics",
     "ReplanRequest",
     "ReplanResult",
 ]

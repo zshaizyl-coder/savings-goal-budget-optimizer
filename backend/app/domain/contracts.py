@@ -243,6 +243,10 @@ class BudgetPlanVersion:
     maximum_achievable_target_minor: int | None = None
     required_additional_income_minor: int | None = None
     recommended_deadline: date | None = None
+    snapshot_id: int | None = None
+    risk_level: str | None = None
+    status: str = "active"
+    target_date_snapshot: date | None = None
 
     def __post_init__(self) -> None:
         if self.version < 1:
