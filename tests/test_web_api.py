@@ -104,6 +104,8 @@ class WebApiTests(unittest.TestCase):
         self.assertEqual(report["failed_rows"], 0)
         analysis = self.client.get("/api/v1/analytics/overview", headers=headers).json()
         self.assertTrue(analysis["has_data"]); self.assertGreaterEqual(len(analysis["weekly"]), 52)
+        self.assertIn("anomaly_weeks", analysis)
+        self.assertIn("category_weekly", analysis)
         transactions = self.client.get("/api/v1/transactions?page_size=10", headers=headers).json()
         self.assertGreater(transactions["total"], 300)
         history = self.client.get("/api/v1/imports", headers=headers).json()["items"]
@@ -141,6 +143,10 @@ class WebApiTests(unittest.TestCase):
         result = response.json(); self.assertTrue(result["feasible"]); self.assertGreater(len(result["items"]), 10)
         activated = self.client.post(f"/api/v1/budgets/{result['plan_id']}/activate", headers=headers)
         self.assertEqual(activated.json()["status"], "active")
+        dashboard = self.client.get("/api/v1/dashboard", headers=headers).json()
+        self.assertEqual(dashboard["plan"]["id"], result["plan_id"])
+        self.assertIn("usage_bps", dashboard["current_week"])
+        self.assertIsNotNone(dashboard["monthly_income_assumption_minor"])
 
     def test_10_infeasible_goal_is_business_result_then_adjustable(self):
         headers = self.register("infeasible-user"); self.import_demo(headers)

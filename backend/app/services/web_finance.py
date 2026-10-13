@@ -9,6 +9,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from backend.app.analytics.consumption import build_consumption_datasets
+from backend.app.analytics.quality import identify_anomaly_weeks
 from backend.app.domain.contracts import (
     BudgetConstraintSpec, BudgetPlanItem, BudgetPlanVersion, FinancialSnapshotSpec,
     IncomeAssumptionSpec, SavingsGoalSpec,
@@ -81,6 +82,7 @@ class WebFinanceService:
             transaction_count=("transaction_id", "count"),
         )
         days["daily_average_minor"] = (days["net_consumption_minor"] / days["active_days"]).round().astype(int)
+        anomalies, lower, upper = identify_anomaly_weeks(data.weekly)
         return {
             "has_data": True,
             "weekly": dataframe_records(data.weekly),
@@ -88,6 +90,9 @@ class WebFinanceService:
             "categories": dataframe_records(categories),
             "category_weekly": dataframe_records(data.category_weekly),
             "weekday_weekend": dataframe_records(days),
+            "anomaly_weeks": dataframe_records(anomalies),
+            "anomaly_bounds": {"lower_minor": round(lower) if lower == lower else None,
+                               "upper_minor": round(upper) if upper == upper else None},
             "large_transaction_threshold_minor": data.thresholds.recommended_minor,
         }
 

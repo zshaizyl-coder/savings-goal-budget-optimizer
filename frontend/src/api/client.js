@@ -8,13 +8,15 @@ api.interceptors.request.use(config => {
   return config
 })
 
-api.interceptors.response.use(response => response.data, error => {
+export function mapApiError(error) {
   const payload = error.response?.data?.error
   const mapped = new Error(payload?.message || '请求失败，请稍后重试。')
   mapped.code = payload?.code || 'NETWORK_ERROR'
   mapped.details = payload?.details || {}
-  return Promise.reject(mapped)
-})
+  return mapped
+}
+
+api.interceptors.response.use(response => response.data, error => Promise.reject(mapApiError(error)))
 
 export function saveToken(token) { localStorage.setItem('access_token', token) }
 export function clearToken() { localStorage.removeItem('access_token') }

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import asdict
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 import json
 from pathlib import Path
 import tempfile
@@ -469,15 +469,50 @@ def dashboard(user: User = Depends(current_user), session: Session = Depends(get
         FinancialSnapshot.user_id == user.id
     ).order_by(FinancialSnapshot.as_of_date.desc(), FinancialSnapshot.id.desc()))
     current_month = date.today().strftime("%Y-%m")
+    today = date.today(); current_week = today - timedelta(days=today.weekday())
     month = next((item for item in analytics_result.get("monthly", [])
                   if item["year_month"] == current_month), None)
+    week = next((item for item in analytics_result.get("weekly", [])
+                 if item["week_start"] == current_week.isoformat()), None)
+    budget_minor = 0
+    if plan:
+        budget_minor = session.scalar(select(func.sum(BudgetPlanItemModel.recommended_budget_minor)).where(
+            BudgetPlanItemModel.budget_plan_id == plan.id,
+            BudgetPlanItemModel.week_start == current_week,
+        )) or 0
+    actual_minor = int(week["net_consumption_minor"]) if week else 0
+    monthly_income_minor = 0
+    if goal:
+        incomes = session.scalars(select(IncomeAssumption).where(
+            IncomeAssumption.goal_id == goal.id, IncomeAssumption.is_active.is_(True),
+            IncomeAssumption.start_date <= today, IncomeAssumption.end_date >= date(today.year, today.month, 1),
+        )).all()
+        for income in incomes:
+            if income.frequency == "monthly":
+                monthly_income_minor += income.amount_minor
+            elif income.frequency == "one_time" and income.start_date.strftime("%Y-%m") == current_month:
+                monthly_income_minor += income.amount_minor
+            elif income.frequency == "weekly":
+                monthly_income_minor += income.amount_minor * 4
+    target = goal.target_savings_minor if goal else 0
+    savings = snapshot.available_savings_minor if snapshot else None
     return {
         "has_data": analytics_result["has_data"],
-        "current_savings_minor": snapshot.available_savings_minor if snapshot else None,
+        "current_savings_minor": savings,
+        "monthly_income_assumption_minor": monthly_income_minor if goal else None,
         "monthly_actual_minor": month["net_consumption_minor"] if month else None,
+        "goal_progress_bps": (min(10_000, round(savings / target * 10_000))
+                              if savings is not None and target else None),
+        "current_week": {"week_start": current_week.isoformat(), "budget_minor": budget_minor,
+                         "actual_minor": actual_minor,
+                         "usage_bps": round(actual_minor / budget_minor * 10_000) if budget_minor else None,
+                         "status": ("replan_recommended" if budget_minor and actual_minor > budget_minor
+                                    else "normal" if budget_minor else "no_plan")},
         "goal": ({"id": goal.id, "target_savings_minor": goal.target_savings_minor,
                   "target_date": goal.target_date.isoformat()} if goal else None),
         "plan": ({"id": plan.id, "version": plan.version, "risk_level": plan.risk_level,
-                  "expected_final_savings_minor": plan.expected_final_savings_minor} if plan else None),
+                  "expected_final_savings_minor": plan.expected_final_savings_minor,
+                  "last_replan_status": ("已激活新方案" if plan.parent_plan_id else "初始方案")}
+                 if plan else None),
         "recent_weekly": analytics_result.get("weekly", [])[-8:],
     }

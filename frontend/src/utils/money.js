@@ -11,3 +11,8 @@ export function yuanToMinor(value) {
   const [whole, decimal = ''] = text.split('.')
   return Number(whole) * 100 + Number(decimal.padEnd(2, '0'))
 }
+
+export function formatPercent(basisPoints, empty = '暂无数据') {
+  if (basisPoints === null || basisPoints === undefined || Number.isNaN(Number(basisPoints))) return empty
+  return `${(Number(basisPoints) / 100).toFixed(1)}%`
+}
