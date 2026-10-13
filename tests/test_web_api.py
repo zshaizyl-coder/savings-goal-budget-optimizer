@@ -125,6 +125,16 @@ class WebApiTests(unittest.TestCase):
         payload = self.client.get("/api/v1/categories/review", headers=headers).json()
         self.assertIn("审核优先级", payload["meaning"])
         self.assertNotIn("不必要", payload["meaning"])
+        self.assertGreater(payload["summary"]["current_other_count"], 0)
+        self.assertTrue(payload["items"])
+        self.assertIn("representative_transaction_id", payload["items"][0])
+        self.assertIn("merchant_hint", payload["items"][0])
+        group = payload["items"][0]
+        response = self.client.patch(
+            f"/api/v1/transactions/{group['representative_transaction_id']}/category",
+            headers=headers, json={"category_code": "food"},
+        )
+        self.assertGreaterEqual(response.json()["updated_transactions"], 1)
 
     def test_08_forecast_calls_stage6_adapter(self):
         headers = self.register("forecast-user"); self.import_demo(headers)

@@ -36,6 +36,7 @@ from backend.app.replanning import (
 from backend.app.repositories.categories import CategoryRepository
 from backend.app.security import create_access_token, hash_password, verify_password
 from backend.app.services.hybrid_classification import HybridClassificationService
+from backend.app.services.category_review_queue import PrivateCategoryReviewQueue
 from backend.app.services.import_wechat import WechatImportService
 from backend.app.services.web_finance import (
     ADJUSTABILITY_BPS, WebFinanceService, dataframe_records, planning_weeks,
@@ -99,11 +100,15 @@ async def import_wechat(
     try:
         with tempfile.NamedTemporaryFile(dir=private_dir, suffix=".xlsx", delete=False) as handle:
             handle.write(content); path = Path(handle.name)
-        report = WechatImportService(
-            session, request.app.state.settings.secret_key.encode()
-        ).import_file(path, username=user.username)
+        secret = request.app.state.settings.secret_key.encode()
+        report = WechatImportService(session, secret).import_file(path, username=user.username)
+        review_groups = 0
+        if report.status != "failed":
+            review_groups = PrivateCategoryReviewQueue().rebuild(
+                session, path, user_id=user.id, fingerprint_secret=secret, batch_id=report.batch_id,
+            )
         session.commit()
-        return report.to_dict()
+        return report.to_dict() | {"review_group_count": review_groups}
     finally:
         if path is not None:
             path.unlink(missing_ok=True)
@@ -177,6 +182,32 @@ def update_category(
 @router.get("/categories/review")
 def category_review(user: User = Depends(current_user), session: Session = Depends(get_session)):
     other_id = session.scalar(select(Category.id).where(Category.code == "other"))
+    total_count, total_amount = session.execute(select(
+        func.count(Transaction.id), func.coalesce(func.sum(Transaction.amount_minor), 0),
+    ).where(Transaction.user_id == user.id, Transaction.flow_type == "consumption")).one()
+    other_count, other_amount = session.execute(select(
+        func.count(Transaction.id), func.coalesce(func.sum(Transaction.amount_minor), 0),
+    ).where(
+        Transaction.user_id == user.id, Transaction.flow_type == "consumption",
+        func.coalesce(Transaction.user_category_id, Transaction.suggested_category_id) == other_id,
+    )).one()
+    summary = {
+        "current_other_count": int(other_count), "current_other_amount_minor": int(other_amount),
+        "current_other_count_ratio": (int(other_count) / int(total_count) if total_count else 0),
+        "current_other_amount_ratio": (int(other_amount) / int(total_amount) if total_amount else 0),
+    }
+    private = PrivateCategoryReviewQueue().load(user.id)
+    if private["items"]:
+        transaction_ids = [item["representative_transaction_id"] for item in private["items"]]
+        still_other = set(session.scalars(select(Transaction.id).where(
+            Transaction.id.in_(transaction_ids), Transaction.user_id == user.id,
+            Transaction.flow_type == "consumption", Transaction.user_category_id.is_(None),
+            Transaction.suggested_category_id == other_id,
+        )).all())
+        items = [item for item in private["items"]
+                 if item["representative_transaction_id"] in still_other]
+        return {"items": items, "generated_at": private.get("generated_at"), "summary": summary,
+                "meaning": "ABC仅表示财务影响和审核优先级，不表示消费必要性。商户短文本仅来自本机私有审核队列。"}
     rows = session.execute(select(
         Transaction.counterparty_fingerprint, func.sum(Transaction.amount_minor), func.count(Transaction.id)
     ).where(
@@ -190,7 +221,8 @@ def category_review(user: User = Depends(current_user), session: Session = Depen
         tier = "A" if share <= .7 or index == 0 else "B" if share <= .9 or count >= 3 else "C"
         items.append({"group_id": (fingerprint or f"single-{index}")[:12], "tier": tier,
                       "amount_minor": int(amount), "transaction_count": int(count)})
-    return {"items": items, "meaning": "ABC仅表示财务影响和审核优先级，不表示消费必要性。"}
+    return {"items": items, "summary": summary,
+            "meaning": "ABC仅表示财务影响和审核优先级，不表示消费必要性。"}
 
 
 @router.get("/analytics/overview")

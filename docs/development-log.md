@@ -178,3 +178,4 @@
 - 验收补强：Dashboard补齐收入假设、目标进度、周预算执行和最近规划状态；账单页展示完整导入质量；分析页增加后端IQR异常周和分类趋势；财务事件表单覆盖收入、目标和约束变化，同时明确目标/约束仍需用户显式保存，事件文本不自动改写约束。
 - Git commits：`ec94bc2 feat: expose core finance workflow through FastAPI`；`28527ee feat: build savings planning web interface`；`2169ca0 test: cover web workflows and synthetic performance`；`971d186 docs: document web system workflow`；`37ebbe9 feat: complete web dashboard and review workflows`。验收通过后合并 `main` 并创建 `v0.4-web-system`。
 - 真实年度账单Web验证：2618行均已成功入库，但本机处理约32—36秒，超过Axios默认30秒，导致前端误报“请求失败”并诱发重复上传。上传接口单独延长为120秒，超时时明确提示先刷新导入历史；后续重复批次均被幂等识别，没有重复交易。
+- 分类审核Web修复：新年度账单自动规则后OTHER为63.1%笔数、34.9%金额，这不是阶段5.5人工审核后的约5%结果。Web原先只展示匿名组，缺少审核所需短文本。现于导入时生成Git忽略的用户私有临时审核队列，展示脱敏商户/说明短文本、ABC财务影响层级和时段弱证据；选择类别后按匿名商户指纹批量生效并实时重算当前OTHER。当前账单形成128组（A/B/C为10/41/77），不强制把语义不足记录归零。
