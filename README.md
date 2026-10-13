@@ -4,7 +4,7 @@
 
 ## 当前状态
 
-阶段 0—5.6 已完成规划、真实账单管道、消费分析和混合分类验证；阶段 6 已完成周度滚动回测与模型选择。真实账单从外部私有附件原地只读，没有复制到仓库。预算优化、滚动再规划和 Vue 页面尚未开发。
+阶段 0—5.6 已完成规划、真实账单管道、消费分析和混合分类验证；阶段 6 已完成周度滚动回测与模型选择；阶段 7 已实现储蓄目标可行性判断与个性化预算优化。真实账单从外部私有附件原地只读，没有复制到仓库。滚动再规划和 Vue 页面尚未开发。
 
 ## 设计原则
 
@@ -35,7 +35,7 @@ uploads/private/     本地私有上传区（Git 忽略）
 
 ## 计划技术栈
 
-V1 采用 Vue 3、Element Plus、ECharts、FastAPI、SQLAlchemy、Pandas、NumPy 和 SQLite。statsmodels 与 scikit-learn 在预测实验阶段按需引入；优化优先评估 SciPy，只有明确凸优化收益时才引入 CVXPY。最终预测模型和优化目标函数仍须由后续真实滚动实验确定。
+V1 采用 Vue 3、Element Plus、ECharts、FastAPI、SQLAlchemy、Pandas、NumPy 和 SQLite。预测实验使用 statsmodels；预算优化采用 SciPy SLSQP，实现带用户约束的凸二次目标，不引入 CVXPY 或商业求解器。
 
 ## 当前数据结论
 
