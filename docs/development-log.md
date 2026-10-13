@@ -176,4 +176,4 @@
 - 性能：2445笔模拟交易分析46.91ms、预算44.08ms、replan131.29ms；属于单机冒烟测试，不是并发基准。
 - 验证：阶段9新增14项后端API测试和8项前端测试；全仓189项Python测试通过，Vue生产构建通过；本地浏览器确认登录、Dashboard空态、账单/审核页可渲染且无控制台错误。
 - 验收补强：Dashboard补齐收入假设、目标进度、周预算执行和最近规划状态；账单页展示完整导入质量；分析页增加后端IQR异常周和分类趋势；财务事件表单覆盖收入、目标和约束变化，同时明确目标/约束仍需用户显式保存，事件文本不自动改写约束。
-- Git commits：`ec94bc2 feat: expose core finance workflow through FastAPI`；`28527ee feat: build savings planning web interface`；`2169ca0 test: cover web workflows and synthetic performance`；文档提交后合并 `main`，验收通过再创建 `v0.4-web-system`。
+- Git commits：`ec94bc2 feat: expose core finance workflow through FastAPI`；`28527ee feat: build savings planning web interface`；`2169ca0 test: cover web workflows and synthetic performance`；`971d186 docs: document web system workflow`；`37ebbe9 feat: complete web dashboard and review workflows`。验收通过后合并 `main` 并创建 `v0.4-web-system`。
