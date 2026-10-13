@@ -1,0 +1,10 @@
+{
+  "synthetic_transaction_count": 2445,
+  "analytics_ms": 46.91,
+  "weekly_rows": 44,
+  "budget_optimization_ms": 44.08,
+  "budget_feasible": true,
+  "replan_ms": 131.29,
+  "replan_feasible": true,
+  "note": "Synthetic in-memory smoke test; not a concurrency benchmark."
+}
