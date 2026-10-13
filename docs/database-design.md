@@ -415,3 +415,13 @@ erDiagram
 SQLite 时间通过应用类型统一为 UTC；金额为整数分。交易具有来源、方向和非负金额检查约束，并以 `(user_id, source, source_record_fingerprint)` 保证同源幂等。交易链接禁止自关联且置信度限制为 0—10000。
 
 迁移已验证 `base -> head -> base -> head`。阶段 3 设计中的目标、预测、预算和事件表仍是冻结契约，但不会在其业务实现前提前加入迁移。
+
+## 8. 阶段 8 滚动再规划迁移
+
+迁移 `0003_rolling_replan` 将以下冻结契约正式落地：
+
+- `financial_snapshots`、`saving_goals`、`income_assumptions`；
+- `budget_constraints`、`financial_events`；
+- `budget_plans`、`budget_plan_events`、`budget_plan_items`。
+
+预算计划通过 `parent_plan_id` 形成不可变版本链。可行新版本激活时，旧版本在同一事务中改为 `SUPERSEDED`；不可行尝试不替换旧当前计划。事件具有用户内去重键，一次再规划可关联多个事件。事务回滚测试确认：模拟在旧计划失效后抛出异常，旧计划仍恢复为 ACTIVE，且快照、事件和半成品新计划均不会残留。
