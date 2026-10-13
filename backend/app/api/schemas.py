@@ -20,6 +20,11 @@ class CategoryUpdate(BaseModel):
     category_code: str
 
 
+class ModelCategoryBatchRequest(BaseModel):
+    tier: str = Field(default="A", pattern="^(A|B|C)$")
+    limit: int = Field(default=10, ge=1, le=20)
+
+
 class SnapshotCreate(BaseModel):
     as_of_date: date
     available_savings_minor: int = Field(ge=0)

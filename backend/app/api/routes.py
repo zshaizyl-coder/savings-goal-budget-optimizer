@@ -16,8 +16,15 @@ from backend.app.api.deps import current_user, get_session
 from backend.app.api.errors import BusinessError
 from backend.app.api.schemas import (
     BudgetGenerateRequest, CategoryUpdate, ConstraintSet, EventCreate, GoalCreate,
-    LoginRequest, RegisterRequest, ReplanRequestBody,
+    LoginRequest, ModelCategoryBatchRequest, RegisterRequest, ReplanRequestBody,
 )
+from backend.app.classification.deepseek_provider import (
+    DEEPSEEK_PROMPT_VERSION,
+    DeepSeekClassificationProvider,
+)
+from backend.app.classification.features import is_cloud_eligible, privacy_minimized_features
+from backend.app.classification.openai_provider import ClassificationProviderError
+from backend.app.classification.types import ClassificationContext
 from backend.app.domain.contracts import FinancialEventSpec, FinancialSnapshotSpec
 from backend.app.domain.enums import (
     AdjustmentMode, BudgetStrategy, FinancialEventType, ImpactScope,
@@ -25,8 +32,8 @@ from backend.app.domain.enums import (
 )
 from backend.app.models import (
     BudgetConstraint, BudgetPlan, BudgetPlanEvent, BudgetPlanItemModel, Category,
-    FinancialEvent, FinancialSnapshot, ImportBatch, IncomeAssumption, SavingGoal,
-    Transaction, User,
+    ClassificationSuggestion, FinancialEvent, FinancialSnapshot, ImportBatch,
+    IncomeAssumption, SavingGoal, Transaction, User,
 )
 from backend.app.optimization.interfaces import ReplanRequest
 from backend.app.replanning import (
@@ -204,8 +211,26 @@ def category_review(user: User = Depends(current_user), session: Session = Depen
             Transaction.flow_type == "consumption", Transaction.user_category_id.is_(None),
             Transaction.suggested_category_id == other_id,
         )).all())
-        items = [item for item in private["items"]
+        items = [dict(item) for item in private["items"]
                  if item["representative_transaction_id"] in still_other]
+        suggestion_rows = session.execute(select(
+            ClassificationSuggestion, Category.code,
+        ).join(Category, ClassificationSuggestion.suggested_category_id == Category.id).where(
+            ClassificationSuggestion.user_id == user.id,
+            ClassificationSuggestion.transaction_id.in_(transaction_ids),
+            ClassificationSuggestion.provider == "deepseek",
+            ClassificationSuggestion.status == "pending",
+        ).order_by(ClassificationSuggestion.created_at.desc())).all()
+        suggestions = {}
+        for suggestion, category_code in suggestion_rows:
+            suggestions.setdefault(suggestion.transaction_id, {
+                "id": suggestion.id, "category_code": category_code,
+                "confidence": suggestion.confidence_bps / 100,
+                "evidence_codes": json.loads(suggestion.evidence_codes),
+                "model_name": suggestion.model_name,
+            })
+        for item in items:
+            item["model_suggestion"] = suggestions.get(item["representative_transaction_id"])
         return {"items": items, "generated_at": private.get("generated_at"), "summary": summary,
                 "meaning": "ABC仅表示财务影响和审核优先级，不表示消费必要性。商户短文本仅来自本机私有审核队列。"}
     rows = session.execute(select(
@@ -223,6 +248,138 @@ def category_review(user: User = Depends(current_user), session: Session = Depen
                       "amount_minor": int(amount), "transaction_count": int(count)})
     return {"items": items, "summary": summary,
             "meaning": "ABC仅表示财务影响和审核优先级，不表示消费必要性。"}
+
+
+@router.get("/classification/providers/deepseek")
+def deepseek_status(request: Request, user: User = Depends(current_user)):
+    del user
+    settings = request.app.state.settings
+    return {
+        "enabled": settings.deepseek_enabled,
+        "configured": bool(settings.deepseek_api_key),
+        "ready": settings.deepseek_enabled and bool(settings.deepseek_api_key),
+        "model": settings.deepseek_model,
+        "privacy": "仅发送脱敏短文本、金额区间、时段和频次区间；个人二维码默认不发送。",
+    }
+
+
+@router.post("/categories/review/deepseek-suggestions")
+def create_deepseek_suggestions(
+    body: ModelCategoryBatchRequest, request: Request,
+    user: User = Depends(current_user), session: Session = Depends(get_session),
+):
+    settings = request.app.state.settings
+    if not settings.deepseek_enabled or not settings.deepseek_api_key:
+        raise BusinessError(
+            "DEEPSEEK_NOT_CONFIGURED",
+            "DeepSeek分类未启用，请先在本地环境变量中配置密钥并重启后端。",
+            503,
+        )
+    private = PrivateCategoryReviewQueue().load(user.id)
+    queue_items = [item for item in private.get("items", []) if item.get("tier") == body.tier]
+    other_id = session.scalar(select(Category.id).where(Category.code == "other"))
+    contexts: list[ClassificationContext] = []
+    selected_items: list[dict] = []
+    skipped_private = 0
+    for item in queue_items:
+        if len(contexts) >= body.limit:
+            break
+        transaction = session.get(Transaction, item.get("representative_transaction_id"))
+        if (
+            transaction is None or transaction.user_id != user.id
+            or transaction.flow_type != "consumption"
+            or transaction.user_category_id is not None
+            or transaction.suggested_category_id != other_id
+        ):
+            continue
+        context = ClassificationContext(
+            transaction_id=transaction.id,
+            source_type_code=transaction.source_type_code,
+            occurred_at_utc=transaction.occurred_at_utc,
+            amount_minor=transaction.amount_minor,
+            counterparty_hint=str(item.get("merchant_hint") or ""),
+            description_hint=str(item.get("description_hint") or ""),
+            recurring_count=int(item.get("transaction_count") or 1),
+        )
+        if not is_cloud_eligible(privacy_minimized_features(context, user.timezone)):
+            skipped_private += 1
+            continue
+        contexts.append(context); selected_items.append(item)
+    if not contexts:
+        return {"created": 0, "skipped_private": skipped_private, "items": []}
+    provider = DeepSeekClassificationProvider(
+        api_key=settings.deepseek_api_key, model_name=settings.deepseek_model,
+        base_url=settings.deepseek_base_url, timezone_name=user.timezone,
+    )
+    try:
+        results = provider.classify_many(contexts)
+    except ClassificationProviderError as exc:
+        code = str(exc)
+        if code == "upstream_http_401":
+            message = "DeepSeek API密钥无效。"
+        elif code == "upstream_http_402":
+            message = "DeepSeek API余额不足。"
+        elif code == "upstream_http_429":
+            message = "DeepSeek API请求过于频繁，请稍后重试。"
+        else:
+            message = "DeepSeek暂时无法返回可验证的分类结果。"
+        raise BusinessError("DEEPSEEK_REQUEST_FAILED", message, 502) from exc
+    service = HybridClassificationService(session)
+    output = []
+    for context, queue_item, result in zip(contexts, selected_items, results, strict=True):
+        suggestion_id = service.record_model_suggestion(
+            user_id=user.id, transaction_id=context.transaction_id,
+            provider=provider.provider_name, model_name=provider.model_name,
+            prompt_version=DEEPSEEK_PROMPT_VERSION, result=result,
+        )
+        output.append({
+            "suggestion_id": suggestion_id, "group_id": queue_item.get("group_id"),
+            "transaction_id": context.transaction_id,
+            "category_code": result.category_code,
+            "confidence": result.confidence_bps / 100,
+            "evidence_codes": list(result.evidence_codes),
+            "requires_review": True,
+        })
+    session.commit()
+    return {"created": len(output), "skipped_private": skipped_private, "items": output}
+
+
+@router.post("/categories/suggestions/{suggestion_id}/accept")
+def accept_category_suggestion(
+    suggestion_id: int, user: User = Depends(current_user),
+    session: Session = Depends(get_session),
+):
+    suggestion = _owned(
+        session, ClassificationSuggestion, suggestion_id, user.id, "SUGGESTION_NOT_FOUND",
+    )
+    category_code = session.scalar(select(Category.code).where(
+        Category.id == suggestion.suggested_category_id,
+    ))
+    if suggestion.status != "pending":
+        raise BusinessError("SUGGESTION_ALREADY_REVIEWED", "该建议已完成审核。", 409)
+    if category_code == "other":
+        raise BusinessError("OTHER_CANNOT_BE_ACCEPTED", "模型建议保留OTHER，无需应用规则。", 422)
+    changed = HybridClassificationService(session).accept_suggestion(
+        suggestion.id, scope="counterparty",
+    )
+    session.commit()
+    return {"updated_transactions": changed, "category_code": category_code,
+            "user_confirmed": True}
+
+
+@router.post("/categories/suggestions/{suggestion_id}/reject")
+def reject_category_suggestion(
+    suggestion_id: int, user: User = Depends(current_user),
+    session: Session = Depends(get_session),
+):
+    suggestion = _owned(
+        session, ClassificationSuggestion, suggestion_id, user.id, "SUGGESTION_NOT_FOUND",
+    )
+    if suggestion.status != "pending":
+        raise BusinessError("SUGGESTION_ALREADY_REVIEWED", "该建议已完成审核。", 409)
+    HybridClassificationService(session).reject_suggestion(suggestion.id)
+    session.commit()
+    return {"status": "rejected"}
 
 
 @router.get("/analytics/overview")

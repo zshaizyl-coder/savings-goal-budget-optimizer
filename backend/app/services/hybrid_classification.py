@@ -26,13 +26,14 @@ class HybridClassificationService:
         provider: str,
         model_name: str,
         result: ClassificationResult,
+        prompt_version: str = PROMPT_VERSION,
     ) -> int:
         item = self.suggestions.save(
             user_id=user_id,
             transaction_id=transaction_id,
             provider=provider,
             model_name=model_name,
-            prompt_version=PROMPT_VERSION,
+            prompt_version=prompt_version,
             result=result,
         )
         return item.id

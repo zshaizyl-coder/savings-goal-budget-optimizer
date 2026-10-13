@@ -17,6 +17,7 @@ from backend.app.classification.features import (
     sanitize_source_text,
     time_bucket,
 )
+from backend.app.classification.deepseek_provider import DeepSeekClassificationProvider
 from backend.app.classification.openai_provider import (
     ClassificationProviderError,
     OpenAIResponsesClassificationProvider,
@@ -166,6 +167,83 @@ class OpenAIProviderTests(unittest.TestCase):
         )
         with self.assertRaisesRegex(ClassificationProviderError, "weak_evidence"):
             provider.classify(self._context())
+
+
+class DeepSeekProviderTests(unittest.TestCase):
+    def _context(self, *, source_type: str = "merchant_consumption"):
+        return ClassificationContext(
+            transaction_id=1, source_type_code=source_type,
+            occurred_at_utc=datetime(2026, 1, 5, 10, 30, tzinfo=timezone.utc),
+            amount_minor=2500, counterparty_hint="模拟咖啡店",
+            description_hint="饮品", recurring_count=3,
+        )
+
+    def test_batch_json_output_is_validated_and_requires_review(self):
+        captured = {}
+
+        def fake_transport(payload):
+            captured.update(payload)
+            return {"choices": [{"message": {"content": json.dumps({"items": [{
+                "item_index": 0, "category_code": "food", "confidence_score": 91,
+                "evidence_codes": ["counterparty_semantics", "time_weak_signal"],
+            }]})}}]}
+
+        provider = DeepSeekClassificationProvider(
+            api_key="test-key", model_name="test-model", transport=fake_transport,
+        )
+        result = provider.classify(self._context())
+        self.assertEqual(result.category_code, "food")
+        self.assertEqual(result.confidence_bps, 9100)
+        self.assertTrue(result.requires_review)
+        self.assertEqual(captured["response_format"], {"type": "json_object"})
+        serialized = json.dumps(captured, ensure_ascii=False)
+        self.assertNotIn("2500", serialized)
+        self.assertNotIn("2026-01-05", serialized)
+
+    def test_personal_qr_is_rejected_before_transport(self):
+        called = False
+
+        def fake_transport(_payload):
+            nonlocal called
+            called = True
+            return {}
+
+        provider = DeepSeekClassificationProvider(
+            api_key="test-key", transport=fake_transport,
+        )
+        context = ClassificationContext(
+            **{**self._context(source_type="qr_payment").__dict__,
+               "counterparty_hint": "张某", "description_hint": "二维码收款"}
+        )
+        with self.assertRaisesRegex(ClassificationProviderError, "context_not_cloud_eligible"):
+            provider.classify(context)
+        self.assertFalse(called)
+
+    def test_time_only_cannot_assign_specific_category(self):
+        provider = DeepSeekClassificationProvider(
+            api_key="test-key", transport=lambda _payload: {
+                "choices": [{"message": {"content": json.dumps({"items": [{
+                    "item_index": 0, "category_code": "food", "confidence_score": 70,
+                    "evidence_codes": ["time_weak_signal"],
+                }]})}}],
+            },
+        )
+        with self.assertRaisesRegex(ClassificationProviderError, "weak_evidence"):
+            provider.classify(self._context())
+
+    def test_known_deepseek_evidence_aliases_are_normalized(self):
+        provider = DeepSeekClassificationProvider(
+            api_key="test-key", transport=lambda _payload: {
+                "choices": [{"message": {"content": json.dumps({"items": [{
+                    "item_index": 0, "category_code": "food", "confidence_score": 90,
+                    "evidence_codes": ["merchant_semantics", "description_hint"],
+                }]})}}],
+            },
+        )
+        result = provider.classify(self._context())
+        self.assertEqual(
+            result.evidence_codes, ("counterparty_semantics", "description_semantics"),
+        )
 
 
 class HybridPersistenceTests(unittest.TestCase):

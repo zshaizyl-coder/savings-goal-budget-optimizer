@@ -179,3 +179,4 @@
 - Git commits：`ec94bc2 feat: expose core finance workflow through FastAPI`；`28527ee feat: build savings planning web interface`；`2169ca0 test: cover web workflows and synthetic performance`；`971d186 docs: document web system workflow`；`37ebbe9 feat: complete web dashboard and review workflows`。验收通过后合并 `main` 并创建 `v0.4-web-system`。
 - 真实年度账单Web验证：2618行均已成功入库，但本机处理约32—36秒，超过Axios默认30秒，导致前端误报“请求失败”并诱发重复上传。上传接口单独延长为120秒，超时时明确提示先刷新导入历史；后续重复批次均被幂等识别，没有重复交易。
 - 分类审核Web修复：新年度账单自动规则后OTHER为63.1%笔数、34.9%金额，这不是阶段5.5人工审核后的约5%结果。Web原先只展示匿名组，缺少审核所需短文本。现于导入时生成Git忽略的用户私有临时审核队列，展示脱敏商户/说明短文本、ABC财务影响层级和时段弱证据；选择类别后按匿名商户指纹批量生效并实时重算当前OTHER。当前账单形成128组（A/B/C为10/41/77），不强制把语义不足记录归零。
+- DeepSeek辅助分类：新增默认关闭的批量候选适配器、本地 `.env` 配置、云端资格拦截、JSON输出校验、模型建议审计与Web接受/拒绝流程。虚构商户真实API请求通过；真实账单A级试验仅保存7个待确认建议，3组未发送，没有自动更改标签。解决 `.env` 与Alembic临时测试库优先级冲突；全仓193项Python测试、9项前端测试与生产构建通过。

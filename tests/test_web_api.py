@@ -122,6 +122,16 @@ class WebApiTests(unittest.TestCase):
 
     def test_07_other_review_has_neutral_wording(self):
         headers = self.register("review-user"); self.import_demo(headers)
+        provider = self.client.get(
+            "/api/v1/classification/providers/deepseek", headers=headers,
+        ).json()
+        self.assertFalse(provider["ready"])
+        disabled = self.client.post(
+            "/api/v1/categories/review/deepseek-suggestions", headers=headers,
+            json={"tier": "A", "limit": 10},
+        )
+        self.assertEqual(disabled.status_code, 503)
+        self.assertEqual(disabled.json()["error"]["code"], "DEEPSEEK_NOT_CONFIGURED")
         payload = self.client.get("/api/v1/categories/review", headers=headers).json()
         self.assertIn("审核优先级", payload["meaning"])
         self.assertNotIn("不必要", payload["meaning"])

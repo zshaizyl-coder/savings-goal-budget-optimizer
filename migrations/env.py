@@ -4,6 +4,7 @@ import os
 from logging.config import fileConfig
 
 from alembic import context
+from dotenv import load_dotenv
 from sqlalchemy import engine_from_config, pool
 
 from backend.app.db.base import Base
@@ -13,8 +14,12 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
+load_dotenv(override=False)
 database_url = os.getenv("DATABASE_URL")
-if database_url:
+# An explicitly supplied Alembic URL (as used by tests and maintenance tools)
+# must win over the local .env default.
+configured_url = config.get_main_option("sqlalchemy.url")
+if database_url and configured_url == "sqlite:///data/private/app.sqlite3":
     config.set_main_option("sqlalchemy.url", database_url.replace("%", "%%"))
 
 target_metadata = Base.metadata
