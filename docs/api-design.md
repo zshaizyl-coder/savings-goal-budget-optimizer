@@ -1,4 +1,6 @@
-# FastAPI 接口草案
+# FastAPI 接口设计与阶段9实现
+
+阶段9已实现核心路径：`auth/register`、`auth/login`、`users/me`、`imports/wechat`、`imports`、`transactions`、交易分类确认、OTHER审核、分析总览、目标与约束、周度预测、预算生成/激活/执行、事件、replan预览/确认、计划历史与Dashboard。以下资源设计仍作为接口语义基线；尚未实现的支付宝、银行卡及模型评价管理端点继续保留为后续扩展。
 
 ## 1. 通用约定
 

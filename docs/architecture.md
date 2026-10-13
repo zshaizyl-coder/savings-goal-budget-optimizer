@@ -183,3 +183,9 @@ V1 采用单体模块化应用：一个 FastAPI 服务、一个 Vue 前端和一
 阶段 4 按本架构落地，没有改变技术栈或层级边界：Pandas 仅在 `WechatBillParser` 读取工作簿；来源 DTO 经独立标准化模块变为统一交易草稿；业务服务编排 ImportBatch 和仓储；SQLAlchemy 模型与 Alembic 负责 SQLite。解析器没有 SQL，ORM 没有微信中文字段，金额和时间规则由公共工具集中实现。
 
 当前只实现导入链需要的六个实体，没有提前创建预测、目标或预算 ORM 表。后续迁移按阶段 3 的领域设计逐步增加，避免一次建立大量尚未使用的表。
+
+## 12. 阶段9 Web集成核对
+
+阶段9落地为模块化单体：`backend.app.main` 创建FastAPI应用，`api/routes.py`承担请求验证与权限边界，`services/web_finance.py`只做HTTP/ORM到阶段5—8契约的适配。预测、优化和replan仍调用既有服务，没有复制到Router或Vue。
+
+Vue采用按页面懒加载，统一API客户端、金额格式器、空状态组件和ECharts封装。所有长期状态保存于SQLite；浏览器刷新不会成为计划丢失的原因。认证仅增加可空的 `users.password_hash`，兼容早期本地分析用户。

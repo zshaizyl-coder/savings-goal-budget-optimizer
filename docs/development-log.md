@@ -164,3 +164,15 @@
 - 对照：1000元冲击下NO_REPLAN期末为11500元，滚动优化预计12608.71元；仅为基础验证，不声明统计显著性。
 - 验证：阶段8新增44项测试，覆盖任务要求的31类场景，以及迁移、事件去重、目标版本、模式差异、快照锚点和未来预测边界；全仓175项测试与Python编译检查通过。
 - Git commits：`3d221d1 feat: implement rolling budget replanning`；`53c5e77 test: add rolling replan scenarios`；阶段文档单独提交后合并 `main`，再按验收条件决定是否创建 `v0.3-core-model`。
+
+### 阶段 9：Web系统与核心算法集成
+
+- Git：从 `main@13c9222` / `v0.3-core-model` 创建 `feature/web-system`；开始前175项核心测试通过，私有账单、数据库和环境变量均未被跟踪。
+- 后端：新增FastAPI应用、PBKDF2密码认证、签名访问令牌、统一业务错误、上传大小/扩展名/工作簿签名检查和逐用户资源隔离；Alembic `0004_web_auth`只增加最小认证字段。
+- 集成：`WebFinanceService`把标准Transaction转换为阶段5聚合和阶段6—8领域契约；预算候选需用户激活，replan先预览后确认，前端没有复制预测或优化公式。
+- 前端：完成登录、Dashboard、账单/分类、消费分析、预测、目标/约束、预算、动态调整和历史方案页面；使用统一金额格式、空态、loading、错误提示和页面懒加载。
+- Demo：新增完全模拟的一年微信账单生成器及可提交样本，不含真实商户、账号或用户信息。
+- E2E：正常流程、不可行目标调整流程、突发支出Plan v1→v2流程均通过TestClient真实执行。
+- 性能：2445笔模拟交易分析46.91ms、预算44.08ms、replan131.29ms；属于单机冒烟测试，不是并发基准。
+- 验证：阶段9新增14项后端API测试和5项前端测试；全仓189项Python测试通过，Vue生产构建通过；本地浏览器确认登录、Dashboard空态、账单/审核页可渲染且无控制台错误。
+- Git commits：`ec94bc2 feat: expose core finance workflow through FastAPI`；`28527ee feat: build savings planning web interface`；`2169ca0 test: cover web workflows and synthetic performance`；文档提交后合并 `main`，验收通过再创建 `v0.4-web-system`。
