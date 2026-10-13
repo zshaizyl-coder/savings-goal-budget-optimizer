@@ -39,6 +39,9 @@ class FeasibilityResult:
     recommended_deadline: date | None = None
     binding_constraint_codes: tuple[str, ...] = ()
     explanations: tuple[str, ...] = ()
+    projected_income_minor: int | None = None
+    minimum_required_spending_minor: int | None = None
+    available_for_spending_minor: int | None = None
 
 
 @dataclass(frozen=True)
@@ -62,6 +65,17 @@ class BudgetOptimizationResult:
     items: tuple[BudgetPlanItem, ...]
     diagnostics: tuple[str, ...]
     infeasibility: FeasibilityResult | None = None
+    optimization_mode: AdjustmentMode | None = None
+    plan_start: date | None = None
+    plan_end: date | None = None
+    required_savings_minor: int | None = None
+    natural_spending_minor: int | None = None
+    recommended_spending_minor: int | None = None
+    habit_deviation_bps: int | None = None
+    risk_level: str | None = None
+    monthly_budget_minor: tuple[tuple[str, int], ...] = ()
+    minimum_violation_count: int = 0
+    weekly_volatility_minor: int | None = None
 
 
 @dataclass(frozen=True)
