@@ -29,6 +29,7 @@ class User(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     username: Mapped[str] = mapped_column(String(80), unique=True, nullable=False)
+    password_hash: Mapped[str | None] = mapped_column(String(180))
     timezone: Mapped[str] = mapped_column(String(64), nullable=False, default="Asia/Shanghai")
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, nullable=False)
 

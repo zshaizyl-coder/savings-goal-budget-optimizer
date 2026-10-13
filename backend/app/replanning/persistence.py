@@ -30,6 +30,8 @@ class PersistReplanCommand:
     goal: SavingsGoalSpec
     events: tuple[FinancialEventSpec, ...]
     result: ReplanResult
+    activate: bool = True
+    events_already_persisted: bool = False
 
 
 class ReplanPersistenceService:
@@ -43,7 +45,9 @@ class ReplanPersistenceService:
                 raise ValueError("previous_plan_not_found")
             if old.user_id != command.snapshot.user_id or old.user_id != command.goal.user_id:
                 raise ValueError("user_mismatch")
-            if any(session.get(FinancialEvent, event.id) is not None for event in command.events):
+            if not command.events_already_persisted and any(
+                session.get(FinancialEvent, event.id) is not None for event in command.events
+            ):
                 raise ValueError("event_already_persisted")
             if not old.is_current or old.status != "active":
                 raise ValueError("previous_plan_not_active")
@@ -78,26 +82,32 @@ class ReplanPersistenceService:
 
             persisted_events = []
             for event in command.events:
-                row = FinancialEvent(
-                    id=event.id,
-                    user_id=event.user_id,
-                    goal_id=event.goal_id,
-                    event_type=event.event_type.value,
-                    amount_minor=event.amount_minor,
-                    event_date=event.event_date,
-                    impact_scope=event.impact_scope.value,
-                    reason_code=event.reason_code,
-                    safe_note=event.safe_note,
-                    deduplication_key=f"goal:{event.goal_id}:event:{event.id}",
-                )
-                session.add(row)
+                row = session.get(FinancialEvent, event.id) if command.events_already_persisted else None
+                if row is None and command.events_already_persisted:
+                    raise ValueError("event_not_found")
+                if row is not None and (row.user_id != old.user_id or row.goal_id != old.goal_id):
+                    raise ValueError("event_scope_mismatch")
+                if row is None:
+                    row = FinancialEvent(
+                        id=event.id,
+                        user_id=event.user_id,
+                        goal_id=event.goal_id,
+                        event_type=event.event_type.value,
+                        amount_minor=event.amount_minor,
+                        event_date=event.event_date,
+                        impact_scope=event.impact_scope.value,
+                        reason_code=event.reason_code,
+                        safe_note=event.safe_note,
+                        deduplication_key=f"goal:{event.goal_id}:event:{event.id}",
+                    )
+                    session.add(row)
                 persisted_events.append(row)
             session.flush()
 
             optimization = command.result.optimization_result
             feasible = optimization.feasible
             goal_achieved = command.result.status_code == "GOAL_ACHIEVED"
-            if feasible:
+            if feasible and command.activate:
                 old.status = "completed" if goal_achieved else "superseded"
                 old.is_current = False
                 if goal_achieved:
@@ -114,9 +124,12 @@ class ReplanPersistenceService:
                 version=command.result.new_version,
                 strategy=optimization.strategy.value,
                 adjustment_mode=optimization.optimization_mode.value,
-                status="completed" if goal_achieved else "active" if feasible else "infeasible",
+                status=("completed" if goal_achieved else
+                        "active" if feasible and command.activate else
+                        "draft" if feasible else "infeasible"),
                 plan_start_week=optimization.plan_start,
-                plan_end_week=optimization.plan_end,
+                plan_end_week=(max(item.week_start for item in optimization.items)
+                               if optimization.items else optimization.plan_start),
                 target_savings_snapshot_minor=command.goal.target_savings_minor,
                 target_date_snapshot=command.goal.target_date,
                 is_feasible=feasible,
@@ -137,7 +150,7 @@ class ReplanPersistenceService:
                     "model_reevaluation_due": command.result.model_reevaluation_due,
                 }, ensure_ascii=False),
                 algorithm_version=optimization.algorithm_version,
-                is_current=feasible and not goal_achieved,
+                is_current=feasible and command.activate and not goal_achieved,
             )
             session.add(new_plan)
             session.flush()
