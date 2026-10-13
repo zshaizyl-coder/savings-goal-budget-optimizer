@@ -1,0 +1,201 @@
+{
+  "dataset_version": "stage56-qr-context-v1",
+  "category_rule_version": "wechat-category-v3",
+  "api_experiment": {
+    "status": "not_run",
+    "api_called": false,
+    "reason": "rules_and_triage_evaluation_only"
+  },
+  "effective_coverage_before": {
+    "core_consumption_count": 1470,
+    "core_consumption_amount_minor": 4232874,
+    "other_count": 242,
+    "other_amount_minor": 228180,
+    "other_count_ratio": 0.16462585034013605,
+    "other_amount_ratio": 0.05390663648386416,
+    "category_counts": {
+      "communications": 20,
+      "education": 92,
+      "entertainment": 78,
+      "food": 301,
+      "health": 43,
+      "housing": 7,
+      "human_relations": 8,
+      "life_services": 225,
+      "other": 242,
+      "shopping": 251,
+      "transport": 203
+    },
+    "category_amounts_minor": {
+      "communications": 99492,
+      "education": 749609,
+      "entertainment": 95224,
+      "food": 702782,
+      "health": 519096,
+      "housing": 60880,
+      "human_relations": 10689,
+      "life_services": 108486,
+      "other": 228180,
+      "shopping": 1167734,
+      "transport": 490702
+    }
+  },
+  "effective_coverage_after": {
+    "core_consumption_count": 1470,
+    "core_consumption_amount_minor": 4232874,
+    "other_count": 229,
+    "other_amount_minor": 218330,
+    "other_count_ratio": 0.15578231292517006,
+    "other_amount_ratio": 0.05157961233903962,
+    "category_counts": {
+      "communications": 20,
+      "education": 92,
+      "entertainment": 78,
+      "food": 309,
+      "health": 43,
+      "housing": 8,
+      "human_relations": 8,
+      "life_services": 229,
+      "other": 229,
+      "shopping": 251,
+      "transport": 203
+    },
+    "category_amounts_minor": {
+      "communications": 99492,
+      "education": 749609,
+      "entertainment": 95224,
+      "food": 709982,
+      "health": 519096,
+      "housing": 61180,
+      "human_relations": 10689,
+      "life_services": 110836,
+      "other": 218330,
+      "shopping": 1167734,
+      "transport": 490702
+    }
+  },
+  "rule_reclassification": {
+    "matched_rows": 2445,
+    "unmatched_rows": 0,
+    "changed_transactions": 17,
+    "other_before_count": 578,
+    "other_after_count": 565,
+    "other_before_amount_minor": 468095,
+    "other_after_amount_minor": 458245,
+    "resulting_category_counts": {
+      "communications": 16,
+      "education": 91,
+      "entertainment": 33,
+      "food": 247,
+      "health": 46,
+      "housing": 11,
+      "human_relations": 61,
+      "life_services": 22,
+      "other": 1449,
+      "shopping": 252,
+      "transport": 217
+    }
+  },
+  "rule_reclassification_scope": "suggested_category_layer; effective coverage remains governed by user overrides",
+  "remaining_other": {
+    "groups": 116,
+    "transactions": 229,
+    "amount_minor": 218330
+  },
+  "direct_remaining_qr": {
+    "transactions": 85,
+    "amount_minor": 104046,
+    "transaction_share_of_other": 0.37117903930131,
+    "amount_share_of_other": 0.4765538405166491
+  },
+  "qr_group_entity_kind": {
+    "groups": {
+      "merchant_like": 2,
+      "personal_or_opaque": 37,
+      "unknown": 4
+    },
+    "transactions": {
+      "merchant_like": 3,
+      "personal_or_opaque": 79,
+      "unknown": 4
+    },
+    "amounts_minor": {
+      "merchant_like": 4200,
+      "personal_or_opaque": 88696,
+      "unknown": 12650
+    }
+  },
+  "qr_rule_candidate": {
+    "groups": {
+      "abstained": 43
+    },
+    "transactions": {
+      "abstained": 86
+    },
+    "amounts_minor": {
+      "abstained": 105546
+    }
+  },
+  "qr_group_importance": {
+    "groups": {
+      "A": 16,
+      "B": 19,
+      "C": 8
+    },
+    "transactions": {
+      "A": 55,
+      "B": 23,
+      "C": 8
+    },
+    "amounts_minor": {
+      "A": 86150,
+      "B": 17496,
+      "C": 1900
+    }
+  },
+  "qr_review_signals": {
+    "dominant_meal_window_groups": 25,
+    "recurring_groups": 11,
+    "time_signal_can_assign_category": false
+  },
+  "other_importance": {
+    "groups": {
+      "A": 37,
+      "B": 36,
+      "C": 43
+    },
+    "transactions": {
+      "A": 100,
+      "B": 71,
+      "C": 58
+    },
+    "amounts_minor": {
+      "A": 174040,
+      "B": 33323,
+      "C": 10967
+    }
+  },
+  "budget_treatment": {
+    "groups": {
+      "contingency_review": 2,
+      "pooled_other": 113,
+      "recurring_other_baseline_candidate": 1
+    },
+    "transactions": {
+      "contingency_review": 30,
+      "pooled_other": 189,
+      "recurring_other_baseline_candidate": 10
+    },
+    "amounts_minor": {
+      "contingency_review": 44500,
+      "pooled_other": 172445,
+      "recurring_other_baseline_candidate": 1385
+    }
+  },
+  "time_only_assignments": 0,
+  "privacy": {
+    "aggregate_contains_source_text": false,
+    "aggregate_contains_fingerprints": false,
+    "private_review_output": "data\\private\\stage56-qr-review.json"
+  }
+}

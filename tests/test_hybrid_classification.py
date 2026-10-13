@@ -58,7 +58,7 @@ class SemanticRuleTests(unittest.TestCase):
             "手机话费缴费": "communications",
             "电影院票务": "entertainment",
         }
-        self.assertEqual(CATEGORY_RULE_VERSION, "wechat-category-v2")
+        self.assertEqual(CATEGORY_RULE_VERSION, "wechat-category-v3")
         for text, expected in cases.items():
             with self.subTest(text=text):
                 self.assertEqual(classify_text("merchant_consumption", text)[0], expected)
@@ -97,14 +97,20 @@ class PrivacyFeatureTests(unittest.TestCase):
 
 
 class OpenAIProviderTests(unittest.TestCase):
-    def _context(self, source_type: str = "merchant_consumption") -> ClassificationContext:
+    def _context(
+        self,
+        source_type: str = "merchant_consumption",
+        *,
+        counterparty_hint: str = "模拟咖啡店",
+        description_hint: str = "饮品",
+    ) -> ClassificationContext:
         return ClassificationContext(
             transaction_id=1,
             source_type_code=source_type,
             occurred_at_utc=datetime(2026, 1, 5, 10, 30, tzinfo=timezone.utc),
             amount_minor=2500,
-            counterparty_hint="模拟咖啡店",
-            description_hint="饮品",
+            counterparty_hint=counterparty_hint,
+            description_hint=description_hint,
             recurring_count=3,
         )
 
@@ -141,7 +147,11 @@ class OpenAIProviderTests(unittest.TestCase):
             api_key="test-key", model_name="test-model", transport=fake_transport,
         )
         with self.assertRaisesRegex(ClassificationProviderError, "context_not_cloud_eligible"):
-            provider.classify(self._context("qr_payment"))
+            provider.classify(self._context(
+                "qr_payment",
+                counterparty_hint="张某",
+                description_hint="二维码收款",
+            ))
         self.assertFalse(called)
 
     def test_time_alone_cannot_assign_food(self):

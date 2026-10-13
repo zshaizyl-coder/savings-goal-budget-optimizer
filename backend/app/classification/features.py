@@ -6,6 +6,7 @@ import unicodedata
 from zoneinfo import ZoneInfo
 
 from .types import ClassificationContext
+from .qr_context import MERCHANT_LIKE, infer_qr_counterparty_kind
 
 
 _EMAIL = re.compile(r"[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}")
@@ -74,12 +75,19 @@ def privacy_minimized_features(
             else "2_to_4" if context.recurring_count <= 4
             else "5_plus"
         ),
+        "counterparty_kind": infer_qr_counterparty_kind(
+            sanitize_source_text(context.counterparty_hint),
+            sanitize_source_text(context.description_hint),
+        ),
     }
 
 
 def is_cloud_eligible(features: dict[str, object]) -> bool:
     """Default-deny personal QR/group collection data for remote models."""
-    if features.get("source_type") != "merchant_consumption":
+    source_type = features.get("source_type")
+    if source_type == "qr_payment" and features.get("counterparty_kind") != MERCHANT_LIKE:
+        return False
+    if source_type not in {"merchant_consumption", "qr_payment"}:
         return False
     combined = f"{features.get('counterparty_hint', '')} {features.get('description_hint', '')}".strip()
     return len(combined) >= 2
