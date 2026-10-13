@@ -1,0 +1,30 @@
+{
+  "experiment_version": "weekly-rolling-backtest-v2",
+  "dataset_version": "weekly-forecast-v1",
+  "initial_train_weeks": 24,
+  "targets": [
+    "total",
+    "food",
+    "shopping"
+  ],
+  "trend_diagnostics": {
+    "total": {
+      "raw_slope_minor_per_week": -27.705791855204197,
+      "winsorized_slope_minor_per_week": 786.9203393665152
+    },
+    "food": {
+      "raw_slope_minor_per_week": 98.91248868778258,
+      "winsorized_slope_minor_per_week": 90.70108597285049
+    },
+    "shopping": {
+      "raw_slope_minor_per_week": 437.319547511312,
+      "winsorized_slope_minor_per_week": 169.11038461538453
+    }
+  },
+  "experiment_failures": [],
+  "negative_predictions_total": 11,
+  "privacy": {
+    "weekly_aggregates_only": true,
+    "contains_transaction_text": false
+  }
+}

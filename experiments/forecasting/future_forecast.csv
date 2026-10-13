@@ -1,0 +1,13 @@
+week_start,week_end,point_forecast_minor,raw_point_forecast,lower_bound_minor,upper_bound_minor,lower95_minor,upper95_minor,model_name,model_version,forecast_horizon,category,generated_at,dataset_version
+2026-09-28,2026-10-04,75540,75540.4705882353,22419,128661,0,238999,historical_mean,total-weekly-forecast-v1,1,total,2026-10-13T04:15:34.344634+00:00,weekly-forecast-v1
+2026-10-05,2026-10-11,75540,75540.4705882353,21412,129668,0,237480,historical_mean,total-weekly-forecast-v1,2,total,2026-10-13T04:15:34.344634+00:00,weekly-forecast-v1
+2026-10-12,2026-10-18,75540,75540.4705882353,21736,129344,0,186139,historical_mean,total-weekly-forecast-v1,3,total,2026-10-13T04:15:34.344634+00:00,weekly-forecast-v1
+2026-10-19,2026-10-25,75540,75540.4705882353,21736,129344,0,186139,historical_mean,total-weekly-forecast-v1,4,total,2026-10-13T04:15:34.344634+00:00,weekly-forecast-v1
+2026-09-28,2026-10-04,12930,12930.0,2100,23760,0,35415,historical_median,food-weekly-forecast-v1,1,food,2026-10-13T04:15:34.344634+00:00,weekly-forecast-v1
+2026-10-05,2026-10-11,12930,12930.0,2115,23745,0,35400,historical_median,food-weekly-forecast-v1,2,food,2026-10-13T04:15:34.344634+00:00,weekly-forecast-v1
+2026-10-12,2026-10-18,12930,12930.0,998,24862,0,35400,historical_median,food-weekly-forecast-v1,3,food,2026-10-13T04:15:34.344634+00:00,weekly-forecast-v1
+2026-10-19,2026-10-25,12930,12930.0,998,24862,0,35400,historical_median,food-weekly-forecast-v1,4,food,2026-10-13T04:15:34.344634+00:00,weekly-forecast-v1
+2026-09-28,2026-10-04,7925,7925.0,0,55425,0,129666,historical_median,shopping-weekly-forecast-v1,1,shopping,2026-10-13T04:15:34.344634+00:00,weekly-forecast-v1
+2026-10-05,2026-10-11,7925,7925.0,0,55655,0,129674,historical_median,shopping-weekly-forecast-v1,2,shopping,2026-10-13T04:15:34.344634+00:00,weekly-forecast-v1
+2026-10-12,2026-10-18,7925,7925.0,0,57315,0,129674,historical_median,shopping-weekly-forecast-v1,3,shopping,2026-10-13T04:15:34.344634+00:00,weekly-forecast-v1
+2026-10-19,2026-10-25,7925,7925.0,0,57315,0,129674,historical_median,shopping-weekly-forecast-v1,4,shopping,2026-10-13T04:15:34.344634+00:00,weekly-forecast-v1
