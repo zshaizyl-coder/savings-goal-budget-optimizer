@@ -4,7 +4,7 @@ import { onMounted,ref } from 'vue';import { ElMessage } from 'element-plus';imp
 const selected=ref(),uploading=ref(false),report=ref(),transactions=ref([]),categories=ref([]),imports=ref([]),reviews=ref([])
 const formatRatio=value=>`${((value||0)*100).toFixed(1)}%`
 async function load(){const [t,c,i,r]=await Promise.all([api.get('/transactions?page_size=100'),api.get('/categories'),api.get('/imports'),api.get('/categories/review')]);transactions.value=t.items;categories.value=c.items;imports.value=i.items;reviews.value=r.items}
-async function upload(){const body=new FormData();body.append('file',selected.value);uploading.value=true;try{report.value=await api.post('/imports/wechat',body);ElMessage.success('导入完成');await load()}catch(e){ElMessage.error(e.message)}finally{uploading.value=false}}
+async function upload(){const body=new FormData();body.append('file',selected.value);uploading.value=true;try{report.value=await api.post('/imports/wechat',body,{timeout:120000});ElMessage.success('导入完成');await load()}catch(e){ElMessage.error(e.message);if(e.code==='REQUEST_TIMEOUT')await load()}finally{uploading.value=false}}
 async function changeCategory(row,code){try{await api.patch(`/transactions/${row.id}/category`,{category_code:code});row.effective_category=code;row.user_confirmed=true;ElMessage.success('分类已确认')}catch(e){ElMessage.error(e.message)}}
 onMounted(load)
 </script>

@@ -9,6 +9,12 @@ api.interceptors.request.use(config => {
 })
 
 export function mapApiError(error) {
+  if (error.code === 'ECONNABORTED') {
+    const timeout = new Error('账单仍在后台处理中，请稍后刷新导入历史，不要重复上传。')
+    timeout.code = 'REQUEST_TIMEOUT'
+    timeout.details = {}
+    return timeout
+  }
   const payload = error.response?.data?.error
   const mapped = new Error(payload?.message || '请求失败，请稍后重试。')
   mapped.code = payload?.code || 'NETWORK_ERROR'

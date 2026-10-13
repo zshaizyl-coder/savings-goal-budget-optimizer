@@ -16,4 +16,10 @@ describe('API error mapping', () => {
     expect(error.code).toBe('NETWORK_ERROR')
     expect(error.message).not.toContain('SQLAlchemy')
   })
+
+  it('explains long-running bill imports without encouraging a retry', () => {
+    const error = mapApiError({ code: 'ECONNABORTED' })
+    expect(error.code).toBe('REQUEST_TIMEOUT')
+    expect(error.message).toContain('不要重复上传')
+  })
 })
