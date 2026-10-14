@@ -289,7 +289,7 @@ class PersonalizedBudgetOptimizer:
             })
         solved = self.solver(objective, x0, jac=gradient, method="SLSQP", bounds=bounds,
                              constraints=tuple(constraints),
-                             options={"maxiter": 500, "ftol": 1e-9})
+                             options={"maxiter": 1500, "ftol": 1e-9})
         if not getattr(solved, "success", False):
             return _infeasible(request, BudgetStrategy.PERSONALIZED, request.feasibility, "SOLVER_FAILURE")
         integer = {key: max(round(bounds[index][0]), min(round(bounds[index][1]), round(value)))
@@ -389,6 +389,18 @@ def _baseline_optimize(request: BudgetOptimizationRequest, strategy: BudgetStrat
                 ]
                 if not candidates: break
                 key = max(candidates, key=lambda item: natural[item] - budgets[item]); budgets[key] += 1
+    # Historical-share rounding can exceed the cap by a few minor units even
+    # when the continuous allocation is feasible. Reconcile only that integer
+    # excess; this does not change the baseline allocation rule.
+    excess = sum(budgets.values()) - cap
+    if excess > 0:
+        for key in sorted(keys, key=lambda item: budgets[item] - minima[item], reverse=True):
+            slack = budgets[key] - minima[key]
+            cut = min(slack, excess)
+            budgets[key] -= cut
+            excess -= cut
+            if excess <= 0:
+                break
     if sum(budgets.values()) > cap or any(budgets[key] < minima[key] for key in keys):
         return _infeasible(request, strategy, request.feasibility, "BASELINE_ALLOCATION_FAILURE")
     return _build_result(request, strategy, f"{strategy.value}-v1", budgets, ("baseline_method",))
