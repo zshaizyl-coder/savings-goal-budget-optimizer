@@ -1,6 +1,6 @@
 export const adjustabilityOptions = [
-  { label: '不可调整', value: 'none' }, { label: '低', value: 'low' },
-  { label: '中', value: 'medium' }, { label: '高', value: 'high' }
+  { label: '必须保持不变', value: 'none' }, { label: '尽量少调整', value: 'low' },
+  { label: '可以适度调整', value: 'medium' }, { label: '必要时可多调整', value: 'high' }
 ]
 
 export function validateGoal(form) {

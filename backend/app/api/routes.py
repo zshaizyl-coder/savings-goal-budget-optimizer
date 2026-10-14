@@ -488,6 +488,12 @@ def _plan_dict(session: Session, plan: BudgetPlan) -> dict:
                            .join(Category, Category.id == BudgetPlanItemModel.category_id)
                            .where(BudgetPlanItemModel.budget_plan_id == plan.id)
                            .order_by(BudgetPlanItemModel.week_start, Category.sort_order)).all()
+    event_types = session.scalars(
+        select(FinancialEvent.event_type)
+        .join(BudgetPlanEvent, BudgetPlanEvent.financial_event_id == FinancialEvent.id)
+        .where(BudgetPlanEvent.budget_plan_id == plan.id)
+        .order_by(FinancialEvent.event_date, FinancialEvent.id)
+    ).all()
     return {
         "id": plan.id, "goal_id": plan.goal_id, "version": plan.version,
         "parent_plan_id": plan.parent_plan_id, "status": plan.status,
@@ -498,6 +504,8 @@ def _plan_dict(session: Session, plan: BudgetPlan) -> dict:
         "required_additional_income_minor": plan.required_additional_income_minor,
         "recommended_deadline": plan.recommended_deadline.isoformat() if plan.recommended_deadline else None,
         "created_at": plan.created_at.isoformat(),
+        "generation_reason": ("initial_plan" if plan.parent_plan_id is None else
+                              event_types[0] if event_types else "manual_replan"),
         "items": [{"week_start": item.week_start.isoformat(), "category_code": code,
                    "category_name": name, "natural_spend_minor": item.natural_spend_minor,
                    "recommended_budget_minor": item.recommended_budget_minor,
@@ -685,6 +693,19 @@ def dashboard(user: User = Depends(current_user), session: Session = Depends(get
                 monthly_income_minor += income.amount_minor * 4
     target = goal.target_savings_minor if goal else 0
     savings = snapshot.available_savings_minor if snapshot else None
+    constraint_count = (session.scalar(select(func.count(BudgetConstraint.id)).where(
+        BudgetConstraint.goal_id == goal.id
+    )) or 0) if goal else 0
+    if not analytics_result["has_data"]:
+        next_action = {"key": "import", "title": "导入第一份账单", "description": "先建立真实消费基础。", "path": "/bills"}
+    elif not goal:
+        next_action = {"key": "goal", "title": "设置储蓄目标", "description": "填写存款、收入和目标日期。", "path": "/goals"}
+    elif not constraint_count:
+        next_action = {"key": "constraints", "title": "设置预算底线", "description": "说明哪些开支必须保留、哪些可调整。", "path": "/goals"}
+    elif not plan:
+        next_action = {"key": "budget", "title": "生成预算方案", "description": "比较正常消费与目标所需预算。", "path": "/budgets"}
+    else:
+        next_action = {"key": "execute", "title": "查看本周执行", "description": "有财务变化时再重新规划。", "path": "/replan"}
     return {
         "has_data": analytics_result["has_data"],
         "current_savings_minor": savings,
@@ -704,4 +725,12 @@ def dashboard(user: User = Depends(current_user), session: Session = Depends(get
                   "last_replan_status": ("已激活新方案" if plan.parent_plan_id else "初始方案")}
                  if plan else None),
         "recent_weekly": analytics_result.get("weekly", [])[-8:],
+        "workflow": {
+            "has_transactions": analytics_result["has_data"],
+            "has_goal": goal is not None,
+            "has_constraints": bool(constraint_count),
+            "has_active_plan": plan is not None,
+            "constraint_count": constraint_count,
+            "next_action": next_action,
+        },
     }

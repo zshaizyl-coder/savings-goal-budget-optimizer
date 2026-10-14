@@ -77,6 +77,12 @@ class WebApiTests(unittest.TestCase):
     def test_01_health(self):
         self.assertEqual(self.client.get("/health").json(), {"status": "ok"})
 
+    def test_01b_dashboard_guides_empty_user_to_import(self):
+        headers = self.register("workflow-empty-user")
+        dashboard = self.client.get("/api/v1/dashboard", headers=headers).json()
+        self.assertEqual(dashboard["workflow"]["next_action"]["key"], "import")
+        self.assertFalse(dashboard["workflow"]["has_transactions"])
+
     def test_02_registration_hashes_password_and_login_works(self):
         headers = self.register("auth-user")
         with self.factory() as session:
@@ -167,6 +173,9 @@ class WebApiTests(unittest.TestCase):
         self.assertEqual(dashboard["plan"]["id"], result["plan_id"])
         self.assertIn("usage_bps", dashboard["current_week"])
         self.assertIsNotNone(dashboard["monthly_income_assumption_minor"])
+        self.assertTrue(dashboard["workflow"]["has_constraints"])
+        self.assertTrue(dashboard["workflow"]["has_active_plan"])
+        self.assertEqual(dashboard["workflow"]["next_action"]["key"], "execute")
 
     def test_10_infeasible_goal_is_business_result_then_adjustable(self):
         headers = self.register("infeasible-user"); self.import_demo(headers)
@@ -224,6 +233,7 @@ class WebApiTests(unittest.TestCase):
         self.assertEqual(len(history), 2)
         current = next(item for item in history if item["is_current"])
         self.assertEqual(current["parent_plan_id"], plan_id)
+        self.assertEqual(current["generation_reason"], "unplanned_expense")
 
     def test_13_key_api_performance_is_interactive(self):
         headers = self.register("performance-user"); self.import_demo(headers)

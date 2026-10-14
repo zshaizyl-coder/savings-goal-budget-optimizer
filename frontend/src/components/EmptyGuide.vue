@@ -1,2 +1,2 @@
-<template><el-empty :description="description"><el-button v-if="action" type="primary" @click="$router.push(action)">去完成下一步</el-button></el-empty></template>
-<script setup>defineProps({ description: String, action: String })</script>
+<template><div class="empty-guide"><el-empty :description="description"><template #image><div class="empty-mark">→</div></template><p v-if="hint" class="muted">{{hint}}</p><el-button v-if="action" type="primary" @click="$router.push(action)">{{actionText}}</el-button></el-empty></div></template>
+<script setup>defineProps({ description: String, hint: String, action: String, actionText: { type: String, default: '去完成前一步' } })</script>
