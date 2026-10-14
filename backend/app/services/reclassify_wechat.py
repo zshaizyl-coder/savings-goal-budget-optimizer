@@ -147,6 +147,33 @@ class WechatSourceReclassificationService:
             ))
         return contexts
 
+    def build_private_transaction_hints(
+        self,
+        path: str | Path,
+        *,
+        user_id: int,
+    ) -> dict[int, dict[str, str]]:
+        """Match source text to persisted rows for a local, Git-ignored detail view."""
+        transactions = self.session.scalars(select(Transaction).where(
+            Transaction.user_id == user_id,
+            Transaction.source == "wechat",
+        )).all()
+        by_fingerprint = {item.source_record_fingerprint: item for item in transactions}
+        hints: dict[int, dict[str, str]] = {}
+        for row in self.parser.parse(path).rows:
+            result = self.normalizer.normalize(row)
+            draft = result.transaction
+            if draft is None:
+                continue
+            item = by_fingerprint.get(draft.source_record_fingerprint)
+            if item is None:
+                continue
+            hints[item.id] = {
+                "counterparty_hint": row.source_counterparty or "",
+                "description_hint": row.source_description or "",
+            }
+        return hints
+
     def build_other_review_items(
         self,
         path: str | Path,

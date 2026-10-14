@@ -145,6 +145,7 @@ def categories(user: User = Depends(current_user), session: Session = Depends(ge
 @router.get("/transactions")
 def transactions(
     page: int = Query(1, ge=1), page_size: int = Query(50, ge=1, le=200),
+    category_code: str | None = Query(default=None, max_length=40),
     user: User = Depends(current_user), session: Session = Depends(get_session),
 ):
     suggested = aliased(Category); confirmed = aliased(Category)
@@ -152,18 +153,29 @@ def transactions(
             .outerjoin(suggested, Transaction.suggested_category_id == suggested.id)
             .outerjoin(confirmed, Transaction.user_category_id == confirmed.id)
             .where(Transaction.user_id == user.id))
-    total = session.scalar(select(func.count()).select_from(Transaction).where(Transaction.user_id == user.id)) or 0
+    if category_code:
+        valid_codes = CategoryRepository(session).ensure_defaults()
+        if category_code not in valid_codes:
+            raise BusinessError("INVALID_CATEGORY", "分类不存在。", 422)
+        base = base.where(func.coalesce(confirmed.code, suggested.code, "other") == category_code)
+    count_query = select(func.count()).select_from(base.subquery())
+    total = session.scalar(count_query) or 0
     rows = session.execute(base.order_by(Transaction.occurred_at_utc.desc())
                            .offset((page - 1) * page_size).limit(page_size)).all()
+    private_details = PrivateCategoryReviewQueue().load(user.id).get("transaction_details", {})
     return {"items": [{
         "id": item.id, "occurred_at": item.occurred_at_utc.isoformat(),
         "amount_minor": item.amount_minor, "direction": item.direction,
         "flow_type": item.flow_type, "source": item.source,
+        "source_transaction_type": item.source_type_code,
         "status": item.normalized_status, "original_category": item.original_category,
         "system_category": system_code or "other",
         "user_category": user_code,
         "effective_category": user_code or system_code or "other",
         "user_confirmed": user_code is not None,
+        "classification_source": "user" if user_code else "system" if system_code else "unclassified",
+        "counterparty_hint": private_details.get(str(item.id), {}).get("counterparty_hint", ""),
+        "description_hint": private_details.get(str(item.id), {}).get("description_hint", ""),
     } for item, system_code, user_code in rows], "total": total, "page": page, "page_size": page_size}
 
 

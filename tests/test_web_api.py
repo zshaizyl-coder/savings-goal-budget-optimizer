@@ -114,6 +114,18 @@ class WebApiTests(unittest.TestCase):
         self.assertIn("category_weekly", analysis)
         transactions = self.client.get("/api/v1/transactions?page_size=10", headers=headers).json()
         self.assertGreater(transactions["total"], 300)
+        category_code = max(analysis["categories"], key=lambda row: row["consumption_count"])["category_code"]
+        filtered = self.client.get(
+            f"/api/v1/transactions?category_code={category_code}&page_size=200", headers=headers,
+        ).json()
+        self.assertGreater(filtered["total"], 0)
+        self.assertTrue(all(item["effective_category"] == category_code for item in filtered["items"]))
+        self.assertIn(filtered["items"][0]["classification_source"], {"system", "user", "unclassified"})
+        self.assertIn("source_transaction_type", filtered["items"][0])
+        self.assertTrue(any(item["counterparty_hint"] for item in filtered["items"]))
+        self.assertTrue(any(item["description_hint"] for item in filtered["items"]))
+        invalid = self.client.get("/api/v1/transactions?category_code=not-a-category", headers=headers)
+        self.assertEqual(invalid.status_code, 422)
         history = self.client.get("/api/v1/imports", headers=headers).json()["items"]
         self.assertEqual(history[0]["inserted_rows"], report["inserted_rows"])
 

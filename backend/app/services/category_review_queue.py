@@ -47,6 +47,15 @@ class PrivateCategoryReviewQueue:
         payload = {
             "user_id": user_id, "batch_id": batch_id,
             "generated_at": datetime.now(timezone.utc).isoformat(), "items": items,
+            "transaction_details": {
+                str(transaction_id): {
+                    "counterparty_hint": sanitize_source_text(detail["counterparty_hint"], max_length=80),
+                    "description_hint": sanitize_source_text(detail["description_hint"], max_length=100),
+                }
+                for transaction_id, detail in service.build_private_transaction_hints(
+                    source_path, user_id=user_id,
+                ).items()
+            },
         }
         self.root.mkdir(parents=True, exist_ok=True)
         target = self._path(user_id); temporary = target.with_suffix(".tmp")
