@@ -1,0 +1,5 @@
+experiment,threshold,absolute_minor,relative_bps,require_both,replan_count,algorithm_runs,unnecessary_replans,savings_gap_minor,residual_untriggered_overrun_minor,habit_deviation_bps,max_weekly_adjustment_minor
+D_THRESHOLD,T1_AND,5000,1000,True,7,7,2,8052,8052,1484,27874
+D_THRESHOLD,T2_AND,10000,2000,True,5,5,0,22299,22299,1484,27874
+D_THRESHOLD,T2_OR,10000,2000,False,5,5,0,22299,22299,1484,27874
+D_THRESHOLD,T3_AND,20000,3000,True,2,2,0,68756,68756,1484,27874

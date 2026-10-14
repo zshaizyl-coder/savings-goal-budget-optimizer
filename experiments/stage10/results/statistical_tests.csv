@@ -1,0 +1,3 @@
+metric,comparison,n,normality_p,test,statistic,p_value,effect_name,effect_size,mean_improvement_ratio
+habit_deviation_bps,PERSONALIZED_vs_UNIFORM_REDUCTION,332,1.0232434558245158e-13,wilcoxon,3379.5,1.0946369294206905e-43,rank_biserial,0.8777271247150765,0.06652276397015686
+habit_deviation_bps,PERSONALIZED_vs_HISTORICAL_SHARE,332,1.6679568033187295e-13,wilcoxon,3419.0,1.4989775492388334e-43,rank_biserial,0.8762979847317197,0.06658576471809782

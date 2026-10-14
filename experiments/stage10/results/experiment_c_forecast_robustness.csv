@@ -1,0 +1,11 @@
+experiment,prediction_error,method,initial_budget_minor,final_savings_minor,savings_gap_minor,goal_achieved,feasible,habit_deviation_bps,replan_count
+C,-0.2,STATIC,733464,1180028,0,True,True,852,0
+C,-0.2,ROLLING,733464,1180028,0,True,True,852,1
+C,-0.1,STATIC,819948,1136786,0,True,True,427,0
+C,-0.1,ROLLING,819948,1136786,0,True,True,427,1
+C,0.0,STATIC,887444,1103036,8614,False,True,171,0
+C,0.0,ROLLING,887444,1112557,0,True,True,397,1
+C,0.1,STATIC,882910,1105304,6346,False,True,944,0
+C,0.1,ROLLING,882910,1114825,0,True,True,1087,1
+C,0.2,STATIC,878352,1107584,4066,False,True,1606,0
+C,0.2,ROLLING,878352,1117089,0,True,True,1730,1

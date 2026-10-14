@@ -1,0 +1,35 @@
+{
+  "experiment_version": "stage10-v1",
+  "dataset_version": "weekly-forecast-v1",
+  "algorithm_versions": [
+    "proportional-v1",
+    "historical_share-v1",
+    "personalized-slsqp-v1",
+    "rolling-replan-v1"
+  ],
+  "master_seed": 20261014,
+  "config_sha256": "2707dc14082bce73821477343209a809b9c99ddd939b6d3cd7af4bbf6a4bf780",
+  "git_commit_at_run": "d62fb4706d204529a760b3543e8b7fcdc84beca8",
+  "runtime_seconds": 552.5373037999998,
+  "git_worktree_dirty_at_run": true,
+  "source_sha256": {
+    "backend/app/optimization/optimizer.py": "ed61edf761a7e5a49e20f0b504fadfd6baf3be1d0e1c64beccc97fa138bc6ef6",
+    "backend/app/replanning/service.py": "5d75899b9649b73ba44c47e5e9693aeec94112bd96d7f2a957178303b31d07d0",
+    "experiments/stage10/core.py": "6cceb659fdfb10e8cef540a719595642752f3c3b5ce8f1619257a15722cc08b9",
+    "experiments/stage10/run_all.py": "6d849499ef381aaf332f713c54b581a55ff25a3a54d21fa6f91f32ba99f94345"
+  },
+  "python": "3.12.14",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "dependencies": {
+    "numpy": "2.3.5",
+    "pandas": "2.3.3",
+    "scipy": "1.18.1",
+    "matplotlib": "3.11.2"
+  },
+  "privacy": {
+    "aggregate_only": true,
+    "contains_transaction_text": false
+  },
+  "last_generation_mode": "reuse_results",
+  "last_reuse_runtime_seconds": 0.6981439999999566
+}

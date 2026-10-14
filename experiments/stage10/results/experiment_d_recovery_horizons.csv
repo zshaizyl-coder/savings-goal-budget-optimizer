@@ -1,0 +1,4 @@
+experiment,recovery_horizon,feasible,weeks_to_recover,max_weekly_adjustment_minor,habit_deviation_bps,goal_achieved,weekly_volatility_minor
+D_HORIZON,2,False,,0,,False,0.0
+D_HORIZON,4,True,4.0,6513,2423.0,True,1359.875
+D_HORIZON,remaining,True,8.0,6514,2091.0,True,0.0

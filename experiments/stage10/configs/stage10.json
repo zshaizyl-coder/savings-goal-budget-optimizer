@@ -1,0 +1,33 @@
+{
+  "experiment_version": "stage10-v1",
+  "dataset_version": "weekly-forecast-v1",
+  "master_seed": 20261014,
+  "repetitions": 30,
+  "planning_weeks": 12,
+  "start_date": "2026-09-28",
+  "current_savings_minor": 500000,
+  "weekly_income_minor": 125000,
+  "pressure_reduction": {"EASY": 0.02, "MEDIUM": 0.18, "HARD": 0.32},
+  "pressure_mode": {"EASY": "balanced", "MEDIUM": "balanced", "HARD": "goal_priority", "INFEASIBLE": "goal_priority"},
+  "prediction_errors": [-0.2, -0.1, 0.0, 0.1, 0.2],
+  "shock_minor": [50000, 100000, 300000, 500000],
+  "shock_weeks": {"EARLY": 3, "MIDDLE": 6, "LATE": 9},
+  "income_changes": [-0.3, -0.1, 0.1, 0.3],
+  "thresholds": [
+    {"name": "T1_AND", "absolute_minor": 5000, "relative_bps": 1000, "require_both": true},
+    {"name": "T2_AND", "absolute_minor": 10000, "relative_bps": 2000, "require_both": true},
+    {"name": "T2_OR", "absolute_minor": 10000, "relative_bps": 2000, "require_both": false},
+    {"name": "T3_AND", "absolute_minor": 20000, "relative_bps": 3000, "require_both": true}
+  ],
+  "recovery_horizons": [2, 4, "remaining"],
+  "real_aggregate_profile_source": "experiments/optimization/scenario_results.json",
+  "synthetic_users": {
+    "A_STABLE": {"scale": 0.85, "volatility": 0.04, "fixed_multiplier": 1.0, "elastic_multiplier": 1.0, "income_variation": 0.0, "shock_probability": 0.0},
+    "B_VOLATILE": {"scale": 1.0, "volatility": 0.28, "fixed_multiplier": 1.0, "elastic_multiplier": 1.0, "income_variation": 0.0, "shock_probability": 0.0},
+    "C_HIGH_FIXED": {"scale": 1.05, "volatility": 0.08, "fixed_multiplier": 2.6, "elastic_multiplier": 0.75, "income_variation": 0.0, "shock_probability": 0.0},
+    "D_HIGH_ELASTIC": {"scale": 1.05, "volatility": 0.12, "fixed_multiplier": 0.8, "elastic_multiplier": 2.0, "income_variation": 0.0, "shock_probability": 0.0},
+    "E_INCOME_VOLATILE": {"scale": 0.95, "volatility": 0.10, "fixed_multiplier": 1.0, "elastic_multiplier": 1.0, "income_variation": 0.2, "shock_probability": 0.0},
+    "F_SHOCK_PRONE": {"scale": 1.0, "volatility": 0.10, "fixed_multiplier": 1.0, "elastic_multiplier": 1.0, "income_variation": 0.0, "shock_probability": 0.18}
+  },
+  "privacy": {"aggregate_only": true, "transaction_text_allowed": false}
+}
