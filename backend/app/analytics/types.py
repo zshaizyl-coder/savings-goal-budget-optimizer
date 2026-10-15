@@ -18,6 +18,7 @@ class AnalysisTransaction:
     user_category_code: str | None = None
     related_transaction_id: int | None = None
     is_abnormal: bool = False
+    planning_role: str = "routine"
 
     @property
     def effective_category_code(self) -> str:

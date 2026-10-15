@@ -79,17 +79,26 @@ def build_transaction_facts(
             "source_type_code": transaction.source_type_code,
             "amount_minor": transaction.amount_minor,
             "category_code": category_code,
+            "planning_role": transaction.planning_role,
             "gross_consumption_minor": transaction.amount_minor if is_consumption else 0,
             "refund_minor": transaction.amount_minor if is_refund else 0,
             "net_consumption_minor": transaction.amount_minor if is_consumption else (-transaction.amount_minor if is_refund else 0),
+            "routine_net_consumption_minor": (
+                transaction.amount_minor if is_consumption and transaction.planning_role == "routine"
+                else (-transaction.amount_minor if is_refund and transaction.planning_role == "routine" else 0)
+            ),
+            "irregular_essential_minor": (
+                transaction.amount_minor if is_consumption and transaction.planning_role == "irregular_essential" else 0
+            ),
             "consumption_count": int(is_consumption),
             "refund_count": int(is_refund),
             "is_weekend": local_time.weekday() >= 5,
         })
     columns = [
         "transaction_id", "occurred_at_utc", "local_date", "week_start", "year_month",
-        "direction", "flow_type", "source_type_code", "amount_minor", "category_code",
+        "direction", "flow_type", "source_type_code", "amount_minor", "category_code", "planning_role",
         "gross_consumption_minor", "refund_minor", "net_consumption_minor",
+        "routine_net_consumption_minor", "irregular_essential_minor",
         "consumption_count", "refund_count", "is_weekend",
     ]
     return pd.DataFrame(rows, columns=columns).sort_values(
@@ -128,6 +137,8 @@ def _daily(facts: pd.DataFrame, large_threshold_minor: int) -> pd.DataFrame:
         gross_consumption_minor=("gross_consumption_minor", "sum"),
         refund_minor=("refund_minor", "sum"),
         net_consumption_minor=("net_consumption_minor", "sum"),
+        routine_net_consumption_minor=("routine_net_consumption_minor", "sum"),
+        irregular_essential_minor=("irregular_essential_minor", "sum"),
         transaction_count=("transaction_id", "size"),
         consumption_count=("consumption_count", "sum"),
         refund_count=("refund_count", "sum"),
@@ -144,11 +155,13 @@ def _daily(facts: pd.DataFrame, large_threshold_minor: int) -> pd.DataFrame:
 def _category_period(facts: pd.DataFrame, period_column: str, period_values) -> pd.DataFrame:
     relevant = facts.loc[(facts["consumption_count"] == 1) | (facts["refund_count"] == 1)].copy()
     if relevant.empty:
-        return pd.DataFrame(columns=[period_column, "category_code", "gross_consumption_minor", "refund_minor", "net_consumption_minor"])
+        return pd.DataFrame(columns=[period_column, "category_code", "gross_consumption_minor", "refund_minor", "net_consumption_minor", "routine_net_consumption_minor", "irregular_essential_minor"])
     grouped = relevant.groupby([period_column, "category_code"], sort=True).agg(
         gross_consumption_minor=("gross_consumption_minor", "sum"),
         refund_minor=("refund_minor", "sum"),
         net_consumption_minor=("net_consumption_minor", "sum"),
+        routine_net_consumption_minor=("routine_net_consumption_minor", "sum"),
+        irregular_essential_minor=("irregular_essential_minor", "sum"),
         consumption_count=("consumption_count", "sum"),
         refund_count=("refund_count", "sum"),
     ).reset_index()
@@ -158,10 +171,12 @@ def _category_period(facts: pd.DataFrame, period_column: str, period_values) -> 
         "gross_consumption_minor": 0,
         "refund_minor": 0,
         "net_consumption_minor": 0,
+        "routine_net_consumption_minor": 0,
+        "irregular_essential_minor": 0,
         "consumption_count": 0,
         "refund_count": 0,
     })
-    integer_columns = ["gross_consumption_minor", "refund_minor", "net_consumption_minor", "consumption_count", "refund_count"]
+    integer_columns = ["gross_consumption_minor", "refund_minor", "net_consumption_minor", "routine_net_consumption_minor", "irregular_essential_minor", "consumption_count", "refund_count"]
     result[integer_columns] = result[integer_columns].astype("int64")
     return result
 
@@ -178,6 +193,8 @@ def _weekly(facts: pd.DataFrame, category_weekly: pd.DataFrame) -> pd.DataFrame:
         gross_consumption_minor=("gross_consumption_minor", "sum"),
         refund_minor=("refund_minor", "sum"),
         net_consumption_minor=("net_consumption_minor", "sum"),
+        routine_net_consumption_minor=("routine_net_consumption_minor", "sum"),
+        irregular_essential_minor=("irregular_essential_minor", "sum"),
         transaction_count=("transaction_id", "size"),
         consumption_count=("consumption_count", "sum"),
         refund_count=("refund_count", "sum"),
@@ -194,6 +211,11 @@ def _weekly(facts: pd.DataFrame, category_weekly: pd.DataFrame) -> pd.DataFrame:
         pivot = pivot.astype("int64")
         pivot.columns = [f"category_net__{column}" for column in pivot.columns]
         result = result.merge(pivot.reset_index(), on="week_start", how="left")
+        routine = category_weekly.pivot(
+            index="week_start", columns="category_code", values="routine_net_consumption_minor"
+        ).fillna(0).astype("int64")
+        routine.columns = [f"category_routine__{column}" for column in routine.columns]
+        result = result.merge(routine.reset_index(), on="week_start", how="left")
     return result.sort_values("week_start", ignore_index=True)
 
 
@@ -204,13 +226,15 @@ def _monthly(facts: pd.DataFrame) -> pd.DataFrame:
         gross_consumption_minor=("gross_consumption_minor", "sum"),
         refund_minor=("refund_minor", "sum"),
         net_consumption_minor=("net_consumption_minor", "sum"),
+        routine_net_consumption_minor=("routine_net_consumption_minor", "sum"),
+        irregular_essential_minor=("irregular_essential_minor", "sum"),
         transaction_count=("transaction_id", "size"),
         consumption_count=("consumption_count", "sum"),
         refund_count=("refund_count", "sum"),
     ).reset_index()
     periods = pd.period_range(min(facts["year_month"]), max(facts["year_month"]), freq="M").astype(str)
     result = pd.DataFrame({"year_month": periods}).merge(grouped, on="year_month", how="left").fillna(0)
-    numeric = ["gross_consumption_minor", "refund_minor", "net_consumption_minor", "transaction_count", "consumption_count", "refund_count"]
+    numeric = ["gross_consumption_minor", "refund_minor", "net_consumption_minor", "routine_net_consumption_minor", "irregular_essential_minor", "transaction_count", "consumption_count", "refund_count"]
     result[numeric] = result[numeric].astype("int64")
     return result
 

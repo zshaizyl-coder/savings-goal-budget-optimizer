@@ -94,6 +94,18 @@ class Transaction(Base):
         CheckConstraint("amount_minor >= 0", name="ck_transaction_amount_nonnegative"),
         CheckConstraint("source IN ('wechat','alipay','bank')", name="ck_transaction_source"),
         CheckConstraint("direction IN ('inflow','outflow','neutral')", name="ck_transaction_direction"),
+        CheckConstraint(
+            "planning_role IN ('routine','irregular_essential','irregular_discretionary')",
+            name="ck_transaction_planning_role",
+        ),
+        CheckConstraint(
+            "recurrence_frequency IS NULL OR recurrence_frequency IN ('one_time','annual')",
+            name="ck_transaction_recurrence_frequency",
+        ),
+        CheckConstraint(
+            "expected_amount_minor IS NULL OR expected_amount_minor > 0",
+            name="ck_transaction_expected_amount_positive",
+        ),
         Index("ix_transactions_user_time", "user_id", "occurred_at_utc"),
         Index("ix_transactions_user_flow_time", "user_id", "flow_type", "occurred_at_utc"),
     )
@@ -119,6 +131,10 @@ class Transaction(Base):
     counterparty_fingerprint: Mapped[str | None] = mapped_column(String(64))
     source_account_fingerprint: Mapped[str | None] = mapped_column(String(64))
     is_abnormal: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    planning_role: Mapped[str] = mapped_column(String(32), nullable=False, default="routine")
+    recurrence_frequency: Mapped[str | None] = mapped_column(String(16))
+    next_expected_date: Mapped[date | None] = mapped_column(Date)
+    expected_amount_minor: Mapped[int | None] = mapped_column(BigInteger)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, nullable=False)
 
 

@@ -6,19 +6,19 @@ from datetime import date, timedelta
 import json
 
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 
 from backend.app.analytics.consumption import build_consumption_datasets
 from backend.app.analytics.quality import identify_anomaly_weeks
 from backend.app.domain.contracts import (
     BudgetConstraintSpec, BudgetPlanItem, BudgetPlanVersion, FinancialSnapshotSpec,
-    IncomeAssumptionSpec, SavingsGoalSpec,
+    IncomeAssumptionSpec, SavingsGoalSpec, WeeklyPredictionItem,
 )
 from backend.app.domain.enums import AdjustmentMode, BudgetStrategy
 from backend.app.forecasting.interfaces import WeeklyActual
 from backend.app.models import (
     BudgetConstraint, BudgetPlan, BudgetPlanItemModel, Category, FinancialSnapshot,
-    IncomeAssumption, SavingGoal,
+    IncomeAssumption, SavingGoal, Transaction,
 )
 from backend.app.optimization.feasibility import SavingsGoalFeasibilityEvaluator
 from backend.app.optimization.interfaces import BudgetOptimizationRequest, FeasibilityRequest
@@ -94,6 +94,8 @@ class WebFinanceService:
             "anomaly_bounds": {"lower_minor": round(lower) if lower == lower else None,
                                "upper_minor": round(upper) if upper == upper else None},
             "large_transaction_threshold_minor": data.thresholds.recommended_minor,
+            "routine_consumption_minor": int(facts["routine_net_consumption_minor"].sum()),
+            "irregular_essential_minor": int(facts["irregular_essential_minor"].sum()),
         }
 
     def goal_objects(self, goal_id: int):
@@ -144,15 +146,79 @@ class WebFinanceService:
         for row in data.weekly.itertuples(index=False):
             if not row.is_complete_week or (cutoff is not None and row.week_start >= cutoff):
                 continue
-            rows.append(WeeklyActual(row.week_start, "total", int(row.net_consumption_minor), True, False))
+            rows.append(WeeklyActual(row.week_start, "total", int(row.routine_net_consumption_minor), True, False))
             for category in category_by_week[row.week_start]:
                 if category.category_code == "unallocated_refund":
                     continue
                 rows.append(WeeklyActual(
                     row.week_start, category.category_code,
-                    max(0, int(category.net_consumption_minor)), True, False,
+                    max(0, int(category.routine_net_consumption_minor)), True, False,
                 ))
         return tuple(rows)
+
+    def planned_irregular_expenses(self, weeks: tuple[date, ...]) -> dict[tuple[date, str], int]:
+        if not weeks:
+            return {}
+        suggested = aliased(Category); confirmed = aliased(Category)
+        rows = self.session.execute(
+            select(Transaction, suggested.code, confirmed.code)
+            .outerjoin(suggested, Transaction.suggested_category_id == suggested.id)
+            .outerjoin(confirmed, Transaction.user_category_id == confirmed.id)
+            .where(Transaction.user_id == self.user_id,
+                   Transaction.planning_role == "irregular_essential",
+                   Transaction.next_expected_date.is_not(None),
+                   Transaction.expected_amount_minor.is_not(None))
+        ).all()
+        output: defaultdict[tuple[date, str], int] = defaultdict(int)
+        first, last = min(weeks), max(weeks) + timedelta(days=6)
+        valid_weeks = set(weeks)
+        for transaction, suggested_code, confirmed_code in rows:
+            due = transaction.next_expected_date
+            while due <= last:
+                if due >= first:
+                    week = due - timedelta(days=due.weekday())
+                    if week in valid_weeks:
+                        output[(week, confirmed_code or suggested_code or "other")] += int(
+                            transaction.expected_amount_minor
+                        )
+                if transaction.recurrence_frequency != "annual":
+                    break
+                try:
+                    due = due.replace(year=due.year + 1)
+                except ValueError:
+                    due = due.replace(year=due.year + 1, day=28)
+        return dict(output)
+
+    def effective_constraints(
+        self, constraints: tuple[BudgetConstraintSpec, ...], weeks: tuple[date, ...],
+    ) -> tuple[BudgetConstraintSpec, ...]:
+        commitments = self.planned_irregular_expenses(weeks)
+        output = []
+        categories = {item.category_code for item in constraints}
+        categories.update(category for _week, category in commitments)
+        template = constraints[0] if constraints else None
+        for week in weeks:
+            for category in sorted(categories):
+                matches = [item for item in constraints if item.category_code == category
+                           and item.effective_from <= week <= item.effective_to]
+                if len(matches) > 1:
+                    raise ValueError(f"constraint_count_invalid:{category}:{week.isoformat()}")
+                committed = commitments.get((week, category), 0)
+                if not matches:
+                    if template is None:
+                        raise ValueError("constraints_required")
+                    output.append(BudgetConstraintSpec(
+                        template.goal_id, category, committed, committed, True, 0,
+                        week, week, template.version,
+                    ))
+                    continue
+                base = matches[0]
+                output.append(BudgetConstraintSpec(
+                    base.goal_id, category, base.minimum_budget_minor + committed,
+                    None if base.maximum_budget_minor is None else base.maximum_budget_minor + committed,
+                    base.is_fixed, base.adjustability_bps, week, week, base.version,
+                ))
+        return tuple(output)
 
     def forecast_for_goal(self, goal_id: int, *, cutoff: date | None = None) -> tuple:
         goal, _goal_spec, _snapshot, _income, constraints = self.goal_objects(goal_id)
@@ -173,12 +239,32 @@ class WebFinanceService:
             for week in history_weeks for category in categories
             if (week, category) not in existing
         )
-        return RollingForecastUpdater().forecast(history, weeks, categories)
+        base = RollingForecastUpdater().forecast(history, weeks, categories)
+        commitments = self.planned_irregular_expenses(weeks)
+        additions: defaultdict[tuple[date, str], int] = defaultdict(int)
+        for (week, category), amount in commitments.items():
+            additions[(week, category)] += amount
+            additions[(week, "total")] += amount
+        result = []
+        seen = set()
+        for item in base:
+            extra = additions.get((item.week_start, item.target_key), 0)
+            result.append(WeeklyPredictionItem(
+                item.week_start, item.target_key, item.predicted_minor + extra,
+                None if item.lower_minor is None else item.lower_minor + extra,
+                None if item.upper_minor is None else item.upper_minor + extra,
+            ))
+            seen.add((item.week_start, item.target_key))
+        result.extend(WeeklyPredictionItem(week, category, amount, amount, amount)
+                      for (week, category), amount in additions.items()
+                      if (week, category) not in seen)
+        return tuple(sorted(result, key=lambda item: (item.week_start, item.target_key)))
 
     def optimize(self, goal_id: int, mode: str):
         _goal, goal, snapshot, incomes, constraints = self.goal_objects(goal_id)
         weeks = planning_weeks(goal.start_date, goal.target_date)
         predictions = self.forecast_for_goal(goal_id)
+        constraints = self.effective_constraints(constraints, weeks)
         feasibility_request = FeasibilityRequest(
             goal, snapshot, incomes, predictions, constraints, weeks,
         )

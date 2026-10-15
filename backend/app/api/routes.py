@@ -17,6 +17,7 @@ from backend.app.api.errors import BusinessError
 from backend.app.api.schemas import (
     BudgetGenerateRequest, CategoryUpdate, ConstraintSet, EventCreate, GoalCreate,
     LoginRequest, ModelCategoryBatchRequest, RegisterRequest, ReplanRequestBody,
+    TransactionPlanningUpdate,
 )
 from backend.app.classification.deepseek_provider import (
     DEEPSEEK_PROMPT_VERSION,
@@ -174,9 +175,55 @@ def transactions(
         "effective_category": user_code or system_code or "other",
         "user_confirmed": user_code is not None,
         "classification_source": "user" if user_code else "system" if system_code else "unclassified",
+        "planning_role": item.planning_role,
+        "recurrence_frequency": item.recurrence_frequency,
+        "next_expected_date": item.next_expected_date.isoformat() if item.next_expected_date else None,
+        "expected_amount_minor": item.expected_amount_minor,
         "counterparty_hint": private_details.get(str(item.id), {}).get("counterparty_hint", ""),
         "description_hint": private_details.get(str(item.id), {}).get("description_hint", ""),
     } for item, system_code, user_code in rows], "total": total, "page": page, "page_size": page_size}
+
+
+@router.patch("/transactions/{transaction_id}/planning")
+def update_transaction_planning(
+    transaction_id: int, body: TransactionPlanningUpdate,
+    user: User = Depends(current_user), session: Session = Depends(get_session),
+):
+    item = _owned(session, Transaction, transaction_id, user.id, "TRANSACTION_NOT_FOUND")
+    if body.planning_role != "routine" and not (
+        item.flow_type == "consumption" and item.direction == "outflow"
+    ):
+        raise BusinessError(
+            "INVALID_PLANNING_ROLE",
+            "只有实际消费支出可以标记为低频或一次性支出。",
+            422,
+        )
+    item.planning_role = body.planning_role
+    if body.planning_role == "routine":
+        item.recurrence_frequency = None
+        item.next_expected_date = None
+        item.expected_amount_minor = None
+    else:
+        item.recurrence_frequency = body.recurrence_frequency
+        item.next_expected_date = body.next_expected_date
+        item.expected_amount_minor = body.expected_amount_minor
+    # A reliably linked refund follows the original expense's historical role,
+    # but never creates a second future commitment of its own.
+    linked_refunds = session.scalars(select(Transaction).where(
+        Transaction.user_id == user.id,
+        Transaction.related_transaction_id == item.id,
+        Transaction.flow_type == "expense_refund",
+    )).all()
+    for refund in linked_refunds:
+        refund.planning_role = body.planning_role
+        refund.recurrence_frequency = None
+        refund.next_expected_date = None
+        refund.expected_amount_minor = None
+    session.commit()
+    return {"id": item.id, "planning_role": item.planning_role,
+            "recurrence_frequency": item.recurrence_frequency,
+            "next_expected_date": item.next_expected_date.isoformat() if item.next_expected_date else None,
+            "expected_amount_minor": item.expected_amount_minor}
 
 
 @router.patch("/transactions/{transaction_id}/category")
@@ -616,6 +663,7 @@ def _compute_replan(session: Session, user: User, plan: BudgetPlan, body: Replan
     weeks = planning_weeks(body.next_open_week, goal.target_date)
     categories = sorted({item.category_code for item in constraints})
     predictions = service.forecast_for_goal(plan.goal_id, cutoff=body.next_open_week)
+    constraints = service.effective_constraints(constraints, weeks)
     request = ReplanRequest(
         service.plan_version(plan), actuals, event_specs, snapshot, goal, constraints,
         predictions, body.next_open_week, BudgetStrategy.PERSONALIZED,

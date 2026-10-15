@@ -38,4 +38,5 @@ class TransactionAnalysisRepository:
             user_category_code=confirmed_code,
             related_transaction_id=transaction.related_transaction_id,
             is_abnormal=transaction.is_abnormal,
+            planning_role=transaction.planning_role,
         ) for transaction, suggested_code, confirmed_code in rows]

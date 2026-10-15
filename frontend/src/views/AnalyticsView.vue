@@ -3,6 +3,7 @@
     <h2 class="page-title">看懂你的消费习惯</h2>
     <p class="muted">净消费＝实际消费－退款；转账、充值和提现不算日常消费。</p>
     <el-alert v-if="data.has_data" title="图表可以继续下钻：点击消费类别，查看组成该金额的具体交易并核对分类。" type="info" :closable="false" />
+    <el-alert v-if="data.irregular_essential_minor" class="section" type="success" :closable="false" :title="`已识别低频必要支出 ${formatMoney(data.irregular_essential_minor)}：保留在真实总消费中，但不再抬高日常周消费基线；下一次到期周会单独预留。`" />
     <div v-if="data.has_data" class="grid section">
       <div class="card wide"><h3>每周净消费</h3><p class="muted">用于观察短期波动，也是后续预算的主要时间单位。</p><EChart :option="weekly" /></div>
       <div class="card wide"><h3>每月消费与退款</h3><EChart :option="monthly" /></div>
@@ -29,6 +30,7 @@
         <el-table-column label="微信原始类别" min-width="130"><template #default="s">{{s.row.original_category||'未提供'}}</template></el-table-column>
         <el-table-column label="资金性质" width="110"><template #default="s">{{flowName(s.row.flow_type)}}</template></el-table-column>
         <el-table-column label="分类依据" width="110"><template #default="s">{{sourceName(s.row.classification_source)}}</template></el-table-column>
+        <el-table-column label="预算处理" min-width="160"><template #default="s"><el-select :model-value="s.row.planning_role" @change="value=>changePlanning(s.row,value)"><el-option label="日常消费" value="routine"/><el-option label="低频必要支出" value="irregular_essential"/><el-option label="一次性可选支出" value="irregular_discretionary"/></el-select></template></el-table-column>
         <el-table-column label="纠正分类" min-width="150"><template #default="s"><el-select :model-value="s.row.effective_category" @change="value=>changeCategory(s.row,value)"><el-option v-for="item in categories" :key="item.code" :label="item.name" :value="item.code"/></el-select></template></el-table-column>
       </el-table>
       <el-pagination v-if="detailTotal>detailPageSize" class="section" layout="prev, pager, next" :total="detailTotal" :page-size="detailPageSize" :current-page="detailPage" @current-change="loadDetails" />
@@ -36,7 +38,7 @@
   </div>
 </template>
 <script setup>
-import { computed,onMounted,ref } from 'vue';import { ElMessage } from 'element-plus';import { api } from '../api/client.js';import EChart from '../components/EChart.vue';import EmptyGuide from '../components/EmptyGuide.vue';import { formatMoney } from '../utils/money.js';import { categoryName,localDate } from '../utils/display.js'
+import { computed,onMounted,ref } from 'vue';import { ElMessage,ElMessageBox } from 'element-plus';import { api } from '../api/client.js';import EChart from '../components/EChart.vue';import EmptyGuide from '../components/EmptyGuide.vue';import { formatMoney,yuanToMinor } from '../utils/money.js';import { categoryName,localDate } from '../utils/display.js'
 const data=ref({}),categories=ref([]),drawerVisible=ref(false),selectedCategory=ref('other'),details=ref([]),detailTotal=ref(0),detailPage=ref(1),detailPageSize=50,detailLoading=ref(false)
 onMounted(async()=>{try{const [overview,categoryList]=await Promise.all([api.get('/analytics/overview'),api.get('/categories')]);data.value=overview;categories.value=categoryList.items}catch(e){ElMessage.error(e.message)}})
 const tip={trigger:'axis',valueFormatter:v=>formatMoney(v)};const categoryRows=computed(()=>(data.value.categories||[]).slice().sort((a,b)=>b.net_consumption_minor-a.net_consumption_minor));const detailAmount=computed(()=>details.value.reduce((sum,item)=>sum+(item.flow_type==='refund'?-item.amount_minor:item.amount_minor),0))
@@ -45,5 +47,6 @@ function openChartCategory(params){const code=params?.data?.categoryCode;if(code
 async function openCategory(code){selectedCategory.value=code;drawerVisible.value=true;await loadDetails(1)}
 async function loadDetails(page=1){detailLoading.value=true;detailPage.value=page;try{const result=await api.get(`/transactions?category_code=${encodeURIComponent(selectedCategory.value)}&page=${page}&page_size=${detailPageSize}`);details.value=result.items;detailTotal.value=result.total}catch(e){ElMessage.error(e.message)}finally{detailLoading.value=false}}
 async function changeCategory(row,code){try{const result=await api.patch(`/transactions/${row.id}/category`,{category_code:code});ElMessage.success(`已纠正并应用到同组 ${result.updated_transactions} 笔交易`);await loadDetails(detailPage.value);data.value=await api.get('/analytics/overview')}catch(e){ElMessage.error(e.message)}}
+async function changePlanning(row,role){try{let payload={planning_role:role};if(role==='irregular_essential'){const occurred=new Date(row.occurred_at);occurred.setUTCFullYear(occurred.getUTCFullYear()+1);const suggested=occurred.toISOString().slice(0,10);const dateResult=await ElMessageBox.prompt('请输入下一次预计发生日期。系统会在到期周完整预留，不会平均摊入日常消费。','低频必要支出',{inputValue:row.next_expected_date||suggested,inputPattern:/^\d{4}-\d{2}-\d{2}$/,inputErrorMessage:'请输入 YYYY-MM-DD'});const amountResult=await ElMessageBox.prompt('请输入预计金额（元）。','低频必要支出',{inputValue:String((row.expected_amount_minor||row.amount_minor)/100),inputPattern:/^\d+(\.\d{1,2})?$/,inputErrorMessage:'请输入有效金额'});payload={...payload,recurrence_frequency:'annual',next_expected_date:dateResult.value,expected_amount_minor:yuanToMinor(amountResult.value)}}await api.patch(`/transactions/${row.id}/planning`,payload);ElMessage.success(role==='irregular_essential'?'已从日常基线分离，并加入年度刚性支出计划':'预算处理方式已更新');await loadDetails(detailPage.value);data.value=await api.get('/analytics/overview')}catch(e){if(e!=='cancel'&&e!=='close')ElMessage.error(e.message)}}
 const flowName=value=>({consumption:'消费',refund:'退款'}[value]||value);const sourceName=value=>({user:'你已确认',system:'系统规则',unclassified:'待确认'}[value]||value)
 </script>

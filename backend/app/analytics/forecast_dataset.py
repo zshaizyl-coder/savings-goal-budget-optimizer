@@ -3,7 +3,7 @@ from __future__ import annotations
 import pandas as pd
 
 
-DATASET_VERSION = "weekly-forecast-v1"
+DATASET_VERSION = "weekly-forecast-v2-routine"
 
 
 def build_weekly_forecast_dataset(
@@ -20,7 +20,11 @@ def build_weekly_forecast_dataset(
         raise ValueError("weekly data contains duplicate week_start values")
     if complete_only:
         source = source.loc[source["is_complete_week"]].reset_index(drop=True)
-    target_column = "net_consumption_minor" if target_category_code is None else f"category_net__{target_category_code}"
+    target_column = ("routine_net_consumption_minor" if target_category_code is None
+                     and "routine_net_consumption_minor" in source.columns
+                     else "net_consumption_minor" if target_category_code is None
+                     else f"category_routine__{target_category_code}" if f"category_routine__{target_category_code}" in source.columns
+                     else f"category_net__{target_category_code}")
     if target_column not in source.columns:
         raise ValueError(f"target column not found: {target_column}")
     target = source[target_column].astype(float)

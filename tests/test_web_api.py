@@ -138,6 +138,33 @@ class WebApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.json()["user_confirmed"])
 
+    def test_06b_irregular_essential_is_scheduled_without_inflating_routine_baseline(self):
+        headers = self.register("irregular-user"); self.import_demo(headers)
+        before = self.client.get("/api/v1/analytics/overview", headers=headers).json()
+        rows = self.client.get("/api/v1/transactions?page_size=200", headers=headers).json()["items"]
+        item = next(row for row in rows if row["flow_type"] == "consumption")
+        response = self.client.patch(
+            f"/api/v1/transactions/{item['id']}/planning", headers=headers,
+            json={"planning_role": "irregular_essential", "recurrence_frequency": "annual",
+                  "next_expected_date": "2026-11-30", "expected_amount_minor": item["amount_minor"]},
+        )
+        self.assertEqual(response.status_code, 200, response.text)
+        after = self.client.get("/api/v1/analytics/overview", headers=headers).json()
+        self.assertEqual(after["irregular_essential_minor"], item["amount_minor"])
+        self.assertEqual(after["routine_consumption_minor"],
+                         before["routine_consumption_minor"] - item["amount_minor"])
+        goal = self.create_goal_and_constraints(headers)
+        forecast = self.client.get(f"/api/v1/forecasts/weekly?goal_id={goal}", headers=headers).json()
+        due_week = "2026-11-30"
+        category = next(row for row in forecast["items"] if row["week_start"] == due_week
+                        and row["target_key"] == item["effective_category"])
+        self.assertGreaterEqual(category["predicted_minor"], item["amount_minor"])
+        plan = self.client.post("/api/v1/budgets/generate", headers=headers,
+                                json={"goal_id": goal, "adjustment_mode": "balanced"}).json()
+        reserved = next(row for row in plan["items"] if row["week_start"] == due_week
+                        and row["category_code"] == item["effective_category"])
+        self.assertGreaterEqual(reserved["recommended_budget_minor"], item["amount_minor"])
+
     def test_07_other_review_has_neutral_wording(self):
         headers = self.register("review-user"); self.import_demo(headers)
         provider = self.client.get(

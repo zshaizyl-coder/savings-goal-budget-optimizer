@@ -20,6 +20,22 @@ class CategoryUpdate(BaseModel):
     category_code: str
 
 
+class TransactionPlanningUpdate(BaseModel):
+    planning_role: str = Field(pattern="^(routine|irregular_essential|irregular_discretionary)$")
+    recurrence_frequency: str | None = Field(default=None, pattern="^(one_time|annual)$")
+    next_expected_date: date | None = None
+    expected_amount_minor: int | None = Field(default=None, gt=0)
+
+    @model_validator(mode="after")
+    def schedule_valid(self):
+        if self.planning_role == "irregular_essential" and (
+            self.recurrence_frequency is None or self.next_expected_date is None
+            or self.expected_amount_minor is None
+        ):
+            raise ValueError("irregular essential expense requires a schedule and amount")
+        return self
+
+
 class ModelCategoryBatchRequest(BaseModel):
     tier: str = Field(default="A", pattern="^(A|B|C)$")
     limit: int = Field(default=10, ge=1, le=20)

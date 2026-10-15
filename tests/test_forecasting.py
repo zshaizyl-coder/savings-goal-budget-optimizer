@@ -136,7 +136,7 @@ class Stage6ForecastTests(unittest.TestCase):
 
     def test_18_dataset_version_is_frozen(self):
         result = build_weekly_forecast_dataset(weekly_frame())
-        self.assertEqual(DATASET_VERSION, "weekly-forecast-v1")
+        self.assertEqual(DATASET_VERSION, "weekly-forecast-v2-routine")
         self.assertEqual(set(result.dataset_version), {DATASET_VERSION})
 
     def test_19_month_allocation_conserves_cross_month_amount(self):

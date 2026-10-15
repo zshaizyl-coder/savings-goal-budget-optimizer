@@ -231,3 +231,14 @@
 真实退款验证表明，来源文件没有可直接证明原消费关系的统一原交易 ID。当前唯一高置信候选才设置 `related_transaction_id`；无法确认的退款仍以独立负向交易保留。该实现比用时间和金额强行一一匹配更保守。
 
 分类质量报告同时输出 `other` 的笔数比例和消费毛额比例，避免只看一个口径误判。用户类别字段已预留但阶段 4 没有实现前端修改功能。
+
+## 13. 交易的预算处理属性
+
+Transaction 增加以下用户确认字段，它们不改变原始金额、时间、来源类别或标准类别：
+
+- `planning_role`：`routine`、`irregular_essential` 或 `irregular_discretionary`；
+- `recurrence_frequency`：V1 支持 `one_time`、`annual`；
+- `next_expected_date`：下一次预计发生日期；
+- `expected_amount_minor`：预计金额，仍使用整数分。
+
+只有 `irregular_essential` 需要完整的周期、日期和金额，并会形成未来预算承诺。默认值为 `routine`，因此旧交易与迁移前行为兼容。用户更改预算角色不会改写 `original_category` 或分类结果。可靠关联退款只继承 `planning_role`，不复制周期字段，以免生成重复承诺。

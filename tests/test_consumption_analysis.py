@@ -31,11 +31,13 @@ def tx(
     category: str | None = "food",
     user_category: str | None = None,
     related: int | None = None,
+    planning_role: str = "routine",
 ) -> AnalysisTransaction:
     return AnalysisTransaction(
         id=identifier, occurred_at_utc=local_utc(time), amount_minor=amount,
         direction=direction, flow_type=flow, suggested_category_code=category,
         user_category_code=user_category, related_transaction_id=related,
+        planning_role=planning_role,
     )
 
 
@@ -141,6 +143,19 @@ class ConsumptionAggregationTests(unittest.TestCase):
         # transfers and balance movements contribute zero.
         expected = 10000 - 2000 + 5000 + 3000
         self.assertEqual(calculate_net_consumption(self.transactions), expected)
+
+    def test_irregular_essential_stays_in_actual_but_not_routine_baseline(self):
+        values = build_consumption_datasets([
+            tx(1, "2026-01-05 08:00:00", 1000, category="food"),
+            tx(2, "2026-01-06 08:00:00", 607000, category="education",
+               planning_role="irregular_essential"),
+        ])
+        week = values.weekly.iloc[0]
+        self.assertEqual(week["net_consumption_minor"], 608000)
+        self.assertEqual(week["routine_net_consumption_minor"], 1000)
+        self.assertEqual(week["irregular_essential_minor"], 607000)
+        forecast = build_weekly_forecast_dataset(values.weekly, complete_only=False)
+        self.assertEqual(forecast.iloc[0]["target_minor"], 1000)
 
 
 class ForecastDatasetTests(unittest.TestCase):
