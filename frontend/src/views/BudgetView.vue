@@ -28,12 +28,14 @@
             <div class="card"><span class="muted">变化风险</span><div class="metric">{{riskName(result.risk_level)}}</div><small>表示历史波动情形，不是成功概率</small></div>
           </div>
           <el-alert v-if="largeAdjustment" class="section" type="warning" :closable="false" title="至少一个类别需要调整 30% 以上。请重点核对生活是否可接受，再决定是否启用。" />
-          <div class="card section">
-            <h3>各类预算为什么变化</h3><EChart :option="chart" />
-            <el-table :data="categoryRows"><el-table-column prop="category" label="类别"/><el-table-column label="正常消费参考"><template #default="s">{{formatMoney(s.row.natural)}}</template></el-table-column><el-table-column label="建议预算"><template #default="s">{{formatMoney(s.row.budget)}}</template></el-table-column><el-table-column label="变化"><template #default="s"><span :class="deltaClass(s.row.delta)">{{formatMoney(s.row.delta)}}</span></template></el-table-column></el-table>
-            <el-collapse class="section"><el-collapse-item title="查看每月预计储蓄"><el-table :data="result.monthly_plan"><el-table-column prop="year_month" label="月份"/><el-table-column label="预计收入"><template #default="s">{{formatMoney(s.row.expected_income_minor)}}</template></el-table-column><el-table-column label="建议消费"><template #default="s">{{formatMoney(s.row.recommended_consumption_minor)}}</template></el-table-column><el-table-column label="预计储蓄"><template #default="s">{{formatMoney(s.row.expected_saving_minor)}}</template></el-table-column><el-table-column label="累计存款"><template #default="s">{{formatMoney(s.row.cumulative_savings_minor)}}</template></el-table-column></el-table></el-collapse-item></el-collapse>
-            <div class="activation-box"><div><b>候选方案尚未生效</b><p class="muted">确认后将作为当前执行预算；以后发生变化仍可重新规划并保留旧版本。</p></div><el-button type="primary" size="large" @click="activate">确认并开始执行</el-button></div>
+          <div class="card section decision-card">
+            <div><span class="eyebrow">你只需要做一个决定</span><h3>这个预算调整可以接受吗？</h3><p class="muted">系统建议总消费调整 {{ formatMoney(result.recommended_spending_minor-result.natural_spending_minor) }}。详细分类和每月计划可在下方展开核对。</p></div>
+            <el-button type="primary" size="large" @click="activate">接受方案并开始执行</el-button>
           </div>
+          <el-collapse class="section secondary-panels budget-details">
+            <el-collapse-item title="查看各类别如何调整" name="categories"><EChart :option="chart" /><el-table :data="categoryRows"><el-table-column prop="category" label="类别"/><el-table-column label="正常消费参考"><template #default="s">{{formatMoney(s.row.natural)}}</template></el-table-column><el-table-column label="建议预算"><template #default="s">{{formatMoney(s.row.budget)}}</template></el-table-column><el-table-column label="变化"><template #default="s"><span :class="deltaClass(s.row.delta)">{{formatMoney(s.row.delta)}}</span></template></el-table-column></el-table></el-collapse-item>
+            <el-collapse-item title="查看每月储蓄进度" name="monthly"><el-table :data="result.monthly_plan"><el-table-column prop="year_month" label="月份"/><el-table-column label="预计收入"><template #default="s">{{formatMoney(s.row.expected_income_minor)}}</template></el-table-column><el-table-column label="建议消费"><template #default="s">{{formatMoney(s.row.recommended_consumption_minor)}}</template></el-table-column><el-table-column label="预计储蓄"><template #default="s">{{formatMoney(s.row.expected_saving_minor)}}</template></el-table-column><el-table-column label="累计存款"><template #default="s">{{formatMoney(s.row.cumulative_savings_minor)}}</template></el-table-column></el-table></el-collapse-item>
+          </el-collapse>
         </template>
       </template>
     </template>
