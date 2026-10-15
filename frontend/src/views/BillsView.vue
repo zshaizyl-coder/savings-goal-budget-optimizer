@@ -26,17 +26,23 @@
         <div class="card"><span class="muted">消费</span><div class="metric">{{ report.flow_type_counts?.consumption || 0 }} 笔</div></div>
         <div class="card"><span class="muted">退款</span><div class="metric">{{ report.refund_rows }} 笔</div></div>
         <div class="card"><span class="muted">不计入消费的转账</span><div class="metric">{{ report.transfer_rows }} 笔</div></div>
-        <div class="card"><span class="muted">待确认分类金额</span><div class="metric">{{ formatRatio(report.uncategorized_consumption_amount_ratio) }}</div></div>
+        <div class="card">
+          <span class="muted">当前待确认分类金额</span>
+          <div class="metric">{{ formatRatio(reviewSummary?.current_other_amount_ratio ?? report.uncategorized_consumption_amount_ratio) }}</div>
+          <small class="table-help">导入时初始比例 {{ formatRatio(report.uncategorized_consumption_amount_ratio) }}</small>
+        </div>
       </div>
     </template>
 
     <el-collapse class="section secondary-panels">
       <el-collapse-item name="quality" title="查看导入记录与数据质量">
-        <el-descriptions v-if="report" border :column="3">
+        <el-alert v-if="report" type="info" :closable="false" title="下面的导入指标是历史快照；分类后的实时结果请看“当前待分类”。"/>
+        <el-descriptions v-if="report" border :column="4" class="section compact-section">
           <el-descriptions-item label="有效记录">{{ report.total_rows }}</el-descriptions-item>
           <el-descriptions-item label="其他业务类型">{{ report.unknown_flow_rows }}</el-descriptions-item>
-          <el-descriptions-item label="待确认分类（笔数）">{{ formatRatio(report.uncategorized_consumption_ratio) }}</el-descriptions-item>
-          <el-descriptions-item label="账单范围" :span="3">{{ localDate(report.earliest_transaction_time) }} 至 {{ localDate(report.latest_transaction_time) }}</el-descriptions-item>
+          <el-descriptions-item label="导入时初始待分类">{{ formatRatio(report.uncategorized_consumption_ratio) }}</el-descriptions-item>
+          <el-descriptions-item label="当前待分类">{{ formatRatio(reviewSummary?.current_other_count_ratio) }}</el-descriptions-item>
+          <el-descriptions-item label="账单范围" :span="4">{{ localDate(report.earliest_transaction_time) }} 至 {{ localDate(report.latest_transaction_time) }}</el-descriptions-item>
         </el-descriptions>
         <h4>历史导入</h4>
         <el-table :data="imports" empty-text="尚未导入账单">
