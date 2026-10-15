@@ -22,6 +22,7 @@ body{background:#f6f8f7;color:#17221f}
 @media(max-width:700px){.el-main{padding:16px}.topbar{height:64px!important}.top-step{display:none}.page-title{font-size:24px}.decision-card{align-items:stretch;flex-direction:column}.decision-card .el-button{width:100%}.content-tabs .el-tabs__item{padding:0 12px!important}.chart{height:280px}}
 
 /* Liquid glass visual system: translucent, calm and readable. */
+.shell[data-ui-version="liquid-glass-v1"]{min-height:100vh}
 body{min-height:100vh;background:
   radial-gradient(circle at 8% 5%,rgba(121,214,192,.24),transparent 30%),
   radial-gradient(circle at 90% 8%,rgba(132,178,255,.24),transparent 28%),

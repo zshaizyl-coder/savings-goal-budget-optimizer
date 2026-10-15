@@ -1,9 +1,9 @@
 <template>
   <router-view v-if="$route.meta.public" />
-  <el-container v-else direction="vertical" class="shell shell-light">
+  <el-container v-else direction="vertical" class="shell shell-light" data-ui-version="liquid-glass-v1">
     <header class="app-header">
       <div class="app-header-inner">
-        <button class="brand-button" @click="$router.push('/')"><span class="brand-mark">储</span><span><b>储蓄规划</b><small>个人预算助手</small></span></button>
+        <button class="brand-button" @click="$router.push('/')"><span class="brand-mark">储</span><span><b>储蓄规划</b><small>个人预算助手 · 新版</small></span></button>
         <nav class="journey-nav" aria-label="规划步骤">
           <router-link v-for="item in primaryItems" :key="item.path" :to="item.path" class="journey-link"><span>{{ item.step }}</span><b>{{ item.name }}</b></router-link>
         </nav>
