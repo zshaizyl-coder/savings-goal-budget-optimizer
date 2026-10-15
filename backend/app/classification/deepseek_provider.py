@@ -9,13 +9,13 @@ from .openai_provider import ClassificationProviderError
 from .types import ALLOWED_CATEGORY_CODES, ClassificationContext, ClassificationResult
 
 
-DEEPSEEK_PROMPT_VERSION = "transaction-category-deepseek-v1"
+DEEPSEEK_PROMPT_VERSION = "transaction-category-deepseek-v2"
 _EVIDENCE_CODES = frozenset({
     "counterparty_semantics", "description_semantics", "repeat_pattern",
-    "amount_pattern", "time_weak_signal", "insufficient_evidence",
+    "amount_pattern", "time_weak_signal", "public_web_evidence", "insufficient_evidence",
 })
 _STRONG_EVIDENCE = frozenset({
-    "counterparty_semantics", "description_semantics", "repeat_pattern",
+    "counterparty_semantics", "description_semantics", "repeat_pattern", "public_web_evidence",
 })
 _EVIDENCE_ALIASES = {
     "merchant_semantics": "counterparty_semantics",
@@ -26,6 +26,8 @@ _EVIDENCE_ALIASES = {
     "recurring_pattern": "repeat_pattern",
     "amount": "amount_pattern",
     "time": "time_weak_signal",
+    "web_search": "public_web_evidence",
+    "web_evidence": "public_web_evidence",
     "insufficient": "insufficient_evidence",
 }
 
@@ -87,12 +89,19 @@ class DeepSeekClassificationProvider:
             "other": "证据不足或不属于以上类别",
         }
         system = (
-            "你是个人账单的保守型分类助手。请只输出 JSON。"
-            "每项必须分到给定类别之一；商户语义不足时返回 other。"
+            "你是个人账单的商户行业分类助手。请只输出 JSON。"
+            "应积极使用已知公共品牌、明确店名和行业词判断类别，不要因为缺少精确交易说明"
+            "就把明显品牌机械地返回 other。广为人知的品牌知识属于"
+            "counterparty_semantics；若输入含 public_web_evidence，应优先结合该公开检索摘要，"
+            "并使用 public_web_evidence 证据代码。"
+            "例如茶饮品牌归 food，美妆或精品零售品牌归 shopping。"
+            "但聚合支付平台（如美团平台商户）、纯英文缩写、个人姓名和语义不明名称仍应"
+            "返回 other，不得为了降低 OTHER 比例强制猜测。"
             "时段、周末和金额只是弱证据，不得单独据此分为餐饮或其他具体类别。"
             "个人姓名、二维码收款或语义不明时不得强制猜测。"
             "evidence_codes只允许使用：counterparty_semantics、description_semantics、"
-            "repeat_pattern、amount_pattern、time_weak_signal、insufficient_evidence。"
+            "repeat_pattern、amount_pattern、time_weak_signal、public_web_evidence、"
+            "insufficient_evidence。"
             "输出格式示例："
             '{"items":[{"item_index":0,"category_code":"other",'
             '"confidence_score":60,"evidence_codes":["insufficient_evidence"]}]}'

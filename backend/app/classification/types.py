@@ -22,6 +22,8 @@ class ClassificationContext:
     counterparty_hint: str = ""
     description_hint: str = ""
     recurring_count: int = 1
+    # Transient public-web snippets. Never persisted or logged.
+    public_web_evidence: str = ""
 
 
 @dataclass(frozen=True)

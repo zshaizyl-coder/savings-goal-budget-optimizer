@@ -4,7 +4,7 @@ from dataclasses import dataclass
 import re
 
 
-CATEGORY_RULE_VERSION = "wechat-category-v3"
+CATEGORY_RULE_VERSION = "wechat-category-v4"
 DEFAULT_CATEGORIES = (
     ("food", "餐饮", 10),
     ("shopping", "购物", 20),
@@ -33,11 +33,11 @@ _PUBLIC_MERCHANT_ALIASES: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("food", (
         "大家乐", "必胜客", "肯德基", "麦当劳", "真功夫", "蜜雪冰城",
         "古茗", "1点点", "蒙自源", "大快活", "茶百道", "瑞幸", "luckin coffee",
-        "蛙来哒",
+        "蛙来哒", "茶宜乐",
     )),
     ("shopping", (
         "转转", "百果园", "大润发", "耐克", "蕉下", "名创优品", "抖音电商",
-        "罗森", "LILY",
+        "罗森", "LILY", "THE COLORIST", "调色师",
     )),
     ("transport", (
         "12306", "中铁网络", "铁旅科技", "小桔充电", "中油", "公共交通",

@@ -52,7 +52,7 @@
           <div><h3>不用把所有交易逐笔分类</h3><p class="muted">系统已经按相同商户分组。优先确认金额较大的组；看不懂或不确定的记录可以继续保留为“其他 / 待确认消费”。</p></div>
           <div class="actions" v-if="deepseek?.ready"><el-button :loading="aiLoading" @click="requestSuggestions('A')">AI 辅助分析高影响项</el-button><el-button text :loading="aiLoading" @click="requestSuggestions('B')">继续分析其余建议项</el-button></div>
         </div>
-        <el-alert :type="deepseek?.ready ? 'success' : 'info'" :closable="false" :title="deepseek?.ready ? 'AI 只提供候选，确认后才会修改分类。' : '未配置 AI 也不影响总消费、预测和预算主流程。'"/>
+        <el-alert :type="deepseek?.ready ? 'success' : 'info'" :closable="false" :title="deepseek?.ready ? (deepseek.web_search_ready ? 'AI 已启用公开商户检索；只搜索商户短名称，候选仍需你确认。' : 'AI 会使用品牌常识给出候选；尚未配置公开商户检索。') : '未配置 AI 也不影响总消费、预测和预算主流程。'"/>
         <el-table class="section" :data="reviews" empty-text="当前没有需要优先审核的商户组">
           <el-table-column prop="merchant_hint" label="商户线索" min-width="180"/>
           <el-table-column label="影响" min-width="130"><template #default="scope"><b>{{ formatMoney(scope.row.amount_minor) }}</b><small class="table-help">{{ scope.row.transaction_count }} 笔 · {{ tierName(scope.row.tier) }}</small></template></el-table-column>
@@ -132,10 +132,11 @@ async function confirmReview(row, code) {
 const categoryName = code => categories.value.find(item => item.code === code)?.name || code
 async function requestSuggestions(tier) {
   try {
-    await ElMessageBox.confirm(`将发送最多 ${tier === 'A' ? 10 : 20} 个商户组的脱敏短文本、金额区间、时段和频次区间；个人二维码会跳过。`, '确认使用 AI 辅助', { type: 'warning', confirmButtonText: '同意并分析', cancelButtonText: '取消' })
+    const searchNotice = deepseek.value?.web_search_ready ? '；同时仅用商户短名称查询公开网页' : ''
+    await ElMessageBox.confirm(`将发送最多 ${tier === 'A' ? 10 : 20} 个商户组的脱敏短文本、金额区间、时段和频次区间${searchNotice}；个人二维码会跳过。`, '确认使用 AI 辅助', { type: 'warning', confirmButtonText: '同意并分析', cancelButtonText: '取消' })
     aiLoading.value = true
     const result = await api.post('/categories/review/deepseek-suggestions', { tier, limit: tier === 'A' ? 10 : 20 }, { timeout: 120000 })
-    ElMessage.success(`生成 ${result.created} 个候选，跳过 ${result.skipped_private} 个隐私或证据不足组`)
+    ElMessage.success(`生成 ${result.created} 个候选，公开检索 ${result.web_search_used || 0} 组，跳过 ${result.skipped_private} 个隐私或证据不足组`)
     await load()
   } catch (error) { if (error !== 'cancel' && error !== 'close') ElMessage.error(error.message || '已取消') }
   finally { aiLoading.value = false }

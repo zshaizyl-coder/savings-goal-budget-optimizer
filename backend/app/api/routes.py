@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from datetime import date, datetime, timedelta, timezone
 import json
 from pathlib import Path
@@ -25,6 +25,10 @@ from backend.app.classification.deepseek_provider import (
 )
 from backend.app.classification.features import is_cloud_eligible, privacy_minimized_features
 from backend.app.classification.openai_provider import ClassificationProviderError
+from backend.app.classification.merchant_search import (
+    BraveMerchantSearchProvider,
+    MerchantSearchError,
+)
 from backend.app.classification.types import ClassificationContext
 from backend.app.domain.contracts import FinancialEventSpec, FinancialSnapshotSpec
 from backend.app.domain.enums import (
@@ -318,7 +322,14 @@ def deepseek_status(request: Request, user: User = Depends(current_user)):
         "configured": bool(settings.deepseek_api_key),
         "ready": settings.deepseek_enabled and bool(settings.deepseek_api_key),
         "model": settings.deepseek_model,
-        "privacy": "仅发送脱敏短文本、金额区间、时段和频次区间；个人二维码默认不发送。",
+        "web_search_ready": (
+            settings.merchant_search_enabled and bool(settings.merchant_search_api_key)
+        ),
+        "web_search_provider": "brave" if settings.merchant_search_enabled else None,
+        "privacy": (
+            "DeepSeek仅接收脱敏短文本、金额区间、时段和频次区间；"
+            "公开检索仅发送商户短名称，个人二维码默认不发送。"
+        ),
     }
 
 
@@ -366,6 +377,27 @@ def create_deepseek_suggestions(
         contexts.append(context); selected_items.append(item)
     if not contexts:
         return {"created": 0, "skipped_private": skipped_private, "items": []}
+    web_search_used = 0
+    if settings.merchant_search_enabled and settings.merchant_search_api_key:
+        search_provider = BraveMerchantSearchProvider(
+            api_key=settings.merchant_search_api_key,
+            base_url=settings.merchant_search_base_url,
+        )
+        enriched_contexts: list[ClassificationContext] = []
+        for context in contexts:
+            try:
+                evidence = search_provider.search(context.counterparty_hint)
+            except MerchantSearchError:
+                enriched_contexts.append(context)
+                continue
+            if evidence.summary:
+                web_search_used += 1
+                enriched_contexts.append(replace(
+                    context, public_web_evidence=evidence.summary,
+                ))
+            else:
+                enriched_contexts.append(context)
+        contexts = enriched_contexts
     provider = DeepSeekClassificationProvider(
         api_key=settings.deepseek_api_key, model_name=settings.deepseek_model,
         base_url=settings.deepseek_base_url, timezone_name=user.timezone,
@@ -400,7 +432,10 @@ def create_deepseek_suggestions(
             "requires_review": True,
         })
     session.commit()
-    return {"created": len(output), "skipped_private": skipped_private, "items": output}
+    return {
+        "created": len(output), "skipped_private": skipped_private,
+        "web_search_used": web_search_used, "items": output,
+    }
 
 
 @router.post("/categories/suggestions/{suggestion_id}/accept")

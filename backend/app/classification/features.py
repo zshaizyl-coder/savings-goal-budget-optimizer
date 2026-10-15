@@ -79,6 +79,9 @@ def privacy_minimized_features(
             sanitize_source_text(context.counterparty_hint),
             sanitize_source_text(context.description_hint),
         ),
+        "public_web_evidence": sanitize_source_text(
+            context.public_web_evidence, max_length=600,
+        ),
     }
 
 

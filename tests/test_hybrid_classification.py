@@ -18,6 +18,7 @@ from backend.app.classification.features import (
     time_bucket,
 )
 from backend.app.classification.deepseek_provider import DeepSeekClassificationProvider
+from backend.app.classification.merchant_search import BraveMerchantSearchProvider
 from backend.app.classification.openai_provider import (
     ClassificationProviderError,
     OpenAIResponsesClassificationProvider,
@@ -59,7 +60,7 @@ class SemanticRuleTests(unittest.TestCase):
             "手机话费缴费": "communications",
             "电影院票务": "entertainment",
         }
-        self.assertEqual(CATEGORY_RULE_VERSION, "wechat-category-v3")
+        self.assertEqual(CATEGORY_RULE_VERSION, "wechat-category-v4")
         for text, expected in cases.items():
             with self.subTest(text=text):
                 self.assertEqual(classify_text("merchant_consumption", text)[0], expected)
@@ -67,6 +68,13 @@ class SemanticRuleTests(unittest.TestCase):
     def test_ambiguous_platform_and_personal_qr_stay_other(self):
         self.assertEqual(classify_text("merchant_consumption", "综合平台订单")[0], "other")
         self.assertEqual(classify_text("qr_payment", "张某", "付款")[0], "other")
+
+    def test_public_brands_are_classified_without_cloud_guessing(self):
+        self.assertEqual(classify_text("merchant_consumption", "茶宜乐")[0], "food")
+        self.assertEqual(
+            classify_text("merchant_consumption", "THE COLORIST 调色师")[0],
+            "shopping",
+        )
 
 
 class PrivacyFeatureTests(unittest.TestCase):
@@ -199,6 +207,30 @@ class DeepSeekProviderTests(unittest.TestCase):
         serialized = json.dumps(captured, ensure_ascii=False)
         self.assertNotIn("2500", serialized)
         self.assertNotIn("2026-01-05", serialized)
+        self.assertIn("明显品牌", serialized)
+
+    def test_public_web_evidence_is_sent_and_accepted_as_strong_evidence(self):
+        captured = {}
+
+        def fake_transport(payload):
+            captured.update(payload)
+            return {"choices": [{"message": {"content": json.dumps({"items": [{
+                "item_index": 0, "category_code": "shopping", "confidence_score": 92,
+                "evidence_codes": ["public_web_evidence"],
+            }]})}}]}
+
+        provider = DeepSeekClassificationProvider(
+            api_key="test-key", model_name="test-model", transport=fake_transport,
+        )
+        context = ClassificationContext(
+            **{**self._context().__dict__,
+               "counterparty_hint": "模拟公开品牌",
+               "public_web_evidence": "公开资料显示为美妆零售连锁品牌"}
+        )
+        result = provider.classify(context)
+        self.assertEqual(result.category_code, "shopping")
+        self.assertIn("公开资料显示为美妆零售连锁品牌", json.dumps(captured, ensure_ascii=False))
+        self.assertEqual(result.evidence_codes, ("public_web_evidence",))
 
     def test_personal_qr_is_rejected_before_transport(self):
         called = False
@@ -244,6 +276,26 @@ class DeepSeekProviderTests(unittest.TestCase):
         self.assertEqual(
             result.evidence_codes, ("counterparty_semantics", "description_semantics"),
         )
+
+
+class MerchantSearchProviderTests(unittest.TestCase):
+    def test_search_sends_only_merchant_name_and_returns_bounded_public_summary(self):
+        captured = []
+        provider = BraveMerchantSearchProvider(
+            api_key="search-key",
+            transport=lambda merchant: (
+                captured.append(merchant) or {
+                    "web": {"results": [{
+                        "title": "示例品牌官网",
+                        "description": "这是一个茶饮连锁品牌",
+                    }]}
+                }
+            ),
+        )
+        evidence = provider.search("示例茶饮")
+        self.assertEqual(captured, ["示例茶饮"])
+        self.assertIn("茶饮连锁品牌", evidence.summary)
+        self.assertEqual(evidence.result_count, 1)
 
 
 class HybridPersistenceTests(unittest.TestCase):
