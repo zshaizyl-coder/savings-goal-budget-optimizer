@@ -22,7 +22,15 @@ export function mapApiError(error) {
   return mapped
 }
 
-api.interceptors.response.use(response => response.data, error => Promise.reject(mapApiError(error)))
+export function shouldResetSession(error) { return error.response?.status === 401 }
+
+api.interceptors.response.use(response => response.data, error => {
+  if (shouldResetSession(error)) {
+    clearToken()
+    if (typeof window !== 'undefined' && window.location.pathname !== '/login') window.location.assign('/login')
+  }
+  return Promise.reject(mapApiError(error))
+})
 
 export function saveToken(token) { localStorage.setItem('access_token', token) }
 export function clearToken() { localStorage.removeItem('access_token') }

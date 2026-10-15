@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { categoryName, localDate, workflowSteps } from './display.js'
+import { categoryName, localDate, primaryNavigation, secondaryNavigation, workflowSteps } from './display.js'
 
 describe('user-facing display rules', () => {
   it('does not expose OTHER as the primary label', () => {
@@ -13,6 +13,14 @@ describe('user-facing display rules', () => {
 
   it('keeps workflow steps in the single supported order', () => {
     expect(workflowSteps({}).map(item => item.path)).toEqual(['/bills', '/analytics', '/goals', '/budgets', '/replan'])
+  })
+
+  it('keeps only the five required tasks in primary navigation', () => {
+    expect(primaryNavigation.map(item => item.path)).toEqual(['/bills', '/analytics', '/goals', '/budgets', '/replan'])
+  })
+
+  it('moves experiment and history pages into secondary navigation', () => {
+    expect(secondaryNavigation.map(item => item.path)).toEqual(['/history', '/forecast'])
   })
 
   it('marks only completed persisted milestones', () => {

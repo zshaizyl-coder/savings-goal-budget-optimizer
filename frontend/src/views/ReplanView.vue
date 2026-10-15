@@ -1,5 +1,5 @@
 <template>
-  <div class="page"><h2 class="page-title">本周执行与动态调整</h2><p class="muted">先看预算执行；只有发生计划外支出、收入变化或目标变化时，才需要重新规划。</p>
+  <div class="page"><div class="page-lead"><span class="step-kicker">第 5 步</span><h2 class="page-title">执行预算，必要时再调整</h2><p class="muted">平时只需查看本周执行情况。只有发生计划外支出、收入变化或目标变化时，才打开重新规划。</p></div>
     <EmptyGuide v-if="ready && !activePlans.length" description="还没有正在执行的预算" hint="请先生成候选预算并确认启用。" action="/budgets" action-text="生成预算方案" />
     <template v-else-if="ready">
       <div class="card section"><div class="section-heading"><div><h3>本周与历史执行情况</h3><p class="muted">实际消费超过预算或财务条件改变时，系统会建议重新规划；小幅偏差无需频繁修改。</p></div><el-button @click="loadExecution">刷新</el-button></div>

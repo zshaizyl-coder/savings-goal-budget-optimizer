@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { mapApiError } from './client.js'
+import { mapApiError, shouldResetSession } from './client.js'
 
 describe('API error mapping', () => {
   it('keeps safe business error fields', () => {
@@ -21,5 +21,10 @@ describe('API error mapping', () => {
     const error = mapApiError({ code: 'ECONNABORTED' })
     expect(error.code).toBe('REQUEST_TIMEOUT')
     expect(error.message).toContain('不要重复上传')
+  })
+
+  it('redirects only when authentication has expired', () => {
+    expect(shouldResetSession({ response: { status: 401 } })).toBe(true)
+    expect(shouldResetSession({ response: { status: 422 } })).toBe(false)
   })
 })

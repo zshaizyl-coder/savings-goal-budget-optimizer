@@ -1,7 +1,6 @@
 <template>
   <div class="page">
-    <h2 class="page-title">看懂你的消费习惯</h2>
-    <p class="muted">净消费＝实际消费－退款；转账、充值和提现不算日常消费。</p>
+    <div class="page-lead"><span class="step-kicker">第 2 步</span><h2 class="page-title">看懂你的消费</h2><p class="muted">先看周度变化和类别占比即可。净消费＝实际消费－退款；转账、充值和提现不会算作消费。</p></div>
     <el-alert v-if="data.has_data" title="图表可以继续下钻：点击消费类别，查看组成该金额的具体交易并核对分类。" type="info" :closable="false" />
     <el-alert v-if="data.irregular_essential_minor" class="section" type="success" :closable="false" :title="`已识别低频必要支出 ${formatMoney(data.irregular_essential_minor)}：保留在真实总消费中，但不再抬高日常周消费基线；下一次到期周会单独预留。`" />
     <div v-if="data.has_data" class="grid section">

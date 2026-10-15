@@ -12,6 +12,19 @@ export const riskLabels = { LOW: '较低', MEDIUM: '需留意', HIGH: '较高', 
 
 export const planStatusLabels = { draft: '待确认', active: '执行中', superseded: '历史版本' }
 
+export const primaryNavigation = [
+  { step: 1, path: '/bills', name: '导入账单', hint: '把微信账单变成可分析的数据' },
+  { step: 2, path: '/analytics', name: '看懂消费', hint: '查看趋势，并核对异常或分类' },
+  { step: 3, path: '/goals', name: '设置目标', hint: '填写存款目标、收入和必要支出' },
+  { step: 4, path: '/budgets', name: '生成预算', hint: '比较方案，确认后再开始执行' },
+  { step: 5, path: '/replan', name: '执行与调整', hint: '记录变化，必要时滚动重算' },
+]
+
+export const secondaryNavigation = [
+  { path: '/history', name: '历史方案', hint: '查看预算版本为什么变化' },
+  { path: '/forecast', name: '预测详情', hint: '查看模型给出的消费参考' },
+]
+
 export const reasonLabels = {
   initial_plan: '首次生成', manual_replan: '主动重新规划', unplanned_expense: '计划外支出',
   extra_income: '临时额外收入', income_decrease: '收入下降', income_increase: '收入增加',

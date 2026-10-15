@@ -1,16 +1,18 @@
 <template>
   <div class="page">
-    <h2 class="page-title">生成适合你的预算方案</h2>
-    <p class="muted">系统先判断目标能否实现，再尽量减少预算与正常消费习惯之间的偏离。</p>
+    <div class="page-lead"><span class="step-kicker">第 4 步</span><h2 class="page-title">生成预算方案</h2><p class="muted">这里只生成候选方案。你看完并确认后，它才会成为正在执行的预算。</p></div>
     <EmptyGuide v-if="ready && !goals.length" description="还没有储蓄目标" hint="请先填写目标、收入和每周预算底线。" action="/goals" action-text="设置储蓄目标" />
     <template v-else>
-      <div class="card section">
-        <div class="actions planning-controls">
-          <el-select v-model="goalId" placeholder="选择目标"><el-option v-for="g in goals" :key="g.id" :label="`${formatMoney(g.target_savings_minor)}，截至 ${g.target_date}`" :value="g.id" /></el-select>
-          <el-radio-group v-model="mode"><el-radio-button value="goal_priority">更快接近目标</el-radio-button><el-radio-button value="balanced">兼顾目标与生活（推荐）</el-radio-button><el-radio-button value="life_stability">尽量保持现有生活</el-radio-button></el-radio-group>
-          <el-button type="primary" :loading="loading" :disabled="!goalId" @click="generate">生成候选方案</el-button>
-        </div>
-        <p class="muted">“更快接近目标”允许更多调整；“尽量保持现有生活”优先减少变化，但目标可能更难实现。默认推荐平衡方式。</p>
+      <div class="card primary-task">
+        <div class="form-step-title"><span>1</span><div><h3>确认本次规划目标</h3><p class="muted">如果只有一个目标，系统已经替你选好。</p></div></div>
+        <el-select v-model="goalId" class="goal-picker" placeholder="选择目标"><el-option v-for="g in goals" :key="g.id" :label="`${formatMoney(g.target_savings_minor)}，截至 ${g.target_date}`" :value="g.id" /></el-select>
+        <div class="form-step-title section"><span>2</span><div><h3>选择调整偏好</h3><p class="muted">不确定就选“平衡”，之后仍可重新生成。</p></div></div>
+        <el-radio-group v-model="mode" class="mode-cards">
+          <el-radio value="goal_priority" border><b>目标优先</b><small>允许较明显地调整非必要消费</small></el-radio>
+          <el-radio value="balanced" border><b>平衡（推荐）</b><small>兼顾储蓄目标和原有习惯</small></el-radio>
+          <el-radio value="life_stability" border><b>生活稳定优先</b><small>尽量减少预算变化</small></el-radio>
+        </el-radio-group>
+        <div class="task-actions"><el-button type="primary" size="large" :loading="loading" :disabled="!goalId" @click="generate">生成候选方案</el-button></div>
       </div>
       <template v-if="result">
         <el-result v-if="!result.feasible" icon="warning" title="按当前条件，目标暂时无法实现">
