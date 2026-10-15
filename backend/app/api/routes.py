@@ -26,7 +26,7 @@ from backend.app.classification.deepseek_provider import (
 from backend.app.classification.features import is_cloud_eligible, privacy_minimized_features
 from backend.app.classification.openai_provider import ClassificationProviderError
 from backend.app.classification.merchant_search import (
-    BraveMerchantSearchProvider,
+    VolcengineMerchantSearchProvider,
     MerchantSearchError,
 )
 from backend.app.classification.types import ClassificationContext
@@ -325,7 +325,7 @@ def deepseek_status(request: Request, user: User = Depends(current_user)):
         "web_search_ready": (
             settings.merchant_search_enabled and bool(settings.merchant_search_api_key)
         ),
-        "web_search_provider": "brave" if settings.merchant_search_enabled else None,
+        "web_search_provider": "volcengine" if settings.merchant_search_enabled else None,
         "privacy": (
             "DeepSeek仅接收脱敏短文本、金额区间、时段和频次区间；"
             "公开检索仅发送商户短名称，个人二维码默认不发送。"
@@ -379,7 +379,7 @@ def create_deepseek_suggestions(
         return {"created": 0, "skipped_private": skipped_private, "items": []}
     web_search_used = 0
     if settings.merchant_search_enabled and settings.merchant_search_api_key:
-        search_provider = BraveMerchantSearchProvider(
+        search_provider = VolcengineMerchantSearchProvider(
             api_key=settings.merchant_search_api_key,
             base_url=settings.merchant_search_base_url,
         )

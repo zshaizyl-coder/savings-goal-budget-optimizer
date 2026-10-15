@@ -18,7 +18,7 @@ from backend.app.classification.features import (
     time_bucket,
 )
 from backend.app.classification.deepseek_provider import DeepSeekClassificationProvider
-from backend.app.classification.merchant_search import BraveMerchantSearchProvider
+from backend.app.classification.merchant_search import VolcengineMerchantSearchProvider
 from backend.app.classification.openai_provider import (
     ClassificationProviderError,
     OpenAIResponsesClassificationProvider,
@@ -281,14 +281,15 @@ class DeepSeekProviderTests(unittest.TestCase):
 class MerchantSearchProviderTests(unittest.TestCase):
     def test_search_sends_only_merchant_name_and_returns_bounded_public_summary(self):
         captured = []
-        provider = BraveMerchantSearchProvider(
+        provider = VolcengineMerchantSearchProvider(
             api_key="search-key",
             transport=lambda merchant: (
                 captured.append(merchant) or {
-                    "web": {"results": [{
-                        "title": "示例品牌官网",
-                        "description": "这是一个茶饮连锁品牌",
-                    }]}
+                    "ResponseMetadata": {},
+                    "Result": {"WebResults": [{
+                        "Title": "示例品牌官网",
+                        "Summary": "这是一个茶饮连锁品牌",
+                    }]},
                 }
             ),
         )

@@ -19,7 +19,7 @@ class Settings:
     deepseek_enabled: bool = False
     merchant_search_api_key: str = ""
     merchant_search_enabled: bool = False
-    merchant_search_base_url: str = "https://api.search.brave.com/res/v1/web/search"
+    merchant_search_base_url: str = "https://open.feedcoopapi.com/search_api/web_search"
 
 
 def get_settings() -> Settings:
@@ -44,11 +44,11 @@ def get_settings() -> Settings:
         os.getenv("DEEPSEEK_MODEL", "deepseek-flash"),
         os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com"),
         deepseek_enabled,
-        os.getenv("BRAVE_SEARCH_API_KEY", ""),
+        os.getenv("VOLCENGINE_SEARCH_API_KEY", ""),
         merchant_search_enabled,
         os.getenv(
             "MERCHANT_SEARCH_BASE_URL",
-            "https://api.search.brave.com/res/v1/web/search",
+            "https://open.feedcoopapi.com/search_api/web_search",
         ),
     )
 

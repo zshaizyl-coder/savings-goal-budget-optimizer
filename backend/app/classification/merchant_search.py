@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import json
 from typing import Callable
-from urllib import error, parse, request
+from urllib import error, request
 
 from .features import sanitize_source_text
 
@@ -22,14 +22,14 @@ class MerchantSearchEvidence:
 SearchTransport = Callable[[str], dict[str, object]]
 
 
-class BraveMerchantSearchProvider:
-    """Retrieve public merchant evidence without sending transaction metadata."""
+class VolcengineMerchantSearchProvider:
+    """Retrieve public merchant evidence from Doubao Search Custom edition."""
 
     def __init__(
         self,
         *,
         api_key: str,
-        base_url: str = "https://api.search.brave.com/res/v1/web/search",
+        base_url: str = "https://open.feedcoopapi.com/search_api/web_search",
         transport: SearchTransport | None = None,
     ):
         if not api_key:
@@ -46,7 +46,11 @@ class BraveMerchantSearchProvider:
             raise MerchantSearchError("merchant_name_not_searchable")
         payload = self.transport(name)
         try:
-            raw_results = payload.get("web", {}).get("results", [])  # type: ignore[union-attr]
+            metadata = payload.get("ResponseMetadata", {})
+            if isinstance(metadata, dict) and metadata.get("Error"):
+                raise MerchantSearchError("upstream_api_error")
+            result = payload.get("Result", {})
+            raw_results = result.get("WebResults", [])  # type: ignore[union-attr]
         except AttributeError as exc:
             raise MerchantSearchError("invalid_search_response") from exc
         if not isinstance(raw_results, list):
@@ -55,9 +59,9 @@ class BraveMerchantSearchProvider:
         for item in raw_results[:3]:
             if not isinstance(item, dict):
                 continue
-            title = sanitize_source_text(str(item.get("title") or ""), max_length=100)
+            title = sanitize_source_text(str(item.get("Title") or ""), max_length=100)
             description = sanitize_source_text(
-                str(item.get("description") or ""), max_length=220,
+                str(item.get("Summary") or item.get("Snippet") or ""), max_length=220,
             )
             snippet = "：".join(part for part in (title, description) if part)
             if snippet:
@@ -69,21 +73,22 @@ class BraveMerchantSearchProvider:
         )
 
     def _http_transport(self, merchant_name: str) -> dict[str, object]:
-        query = parse.urlencode({
-            "q": f'"{merchant_name}" 商户 品牌 行业',
-            "count": 3,
-            "country": "CN",
-            "search_lang": "zh-hans",
-            "ui_lang": "zh-CN",
-            "safesearch": "moderate",
-        })
+        body = json.dumps({
+            "Query": f"{merchant_name} 是什么品牌或商户类型",
+            "SearchType": "web",
+            "Count": 3,
+            "Filter": {"NeedContent": False, "NeedUrl": True},
+            "QueryControl": {"QueryRewrite": True},
+        }, ensure_ascii=False).encode("utf-8")
         req = request.Request(
-            f"{self.base_url}?{query}",
+            self.base_url,
+            data=body,
             headers={
                 "Accept": "application/json",
-                "X-Subscription-Token": self.api_key,
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {self.api_key}",
             },
-            method="GET",
+            method="POST",
         )
         try:
             with request.urlopen(req, timeout=12) as response:  # nosec: configured HTTPS API
