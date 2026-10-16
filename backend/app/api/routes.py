@@ -262,6 +262,8 @@ def category_review(user: User = Depends(current_user), session: Session = Depen
         func.coalesce(Transaction.user_category_id, Transaction.suggested_category_id) == other_id,
     )).one()
     summary = {
+        "consumption_count": int(total_count),
+        "consumption_amount_minor": int(total_amount),
         "current_other_count": int(other_count), "current_other_amount_minor": int(other_amount),
         "current_other_count_ratio": (int(other_count) / int(total_count) if total_count else 0),
         "current_other_amount_ratio": (int(other_amount) / int(total_amount) if total_amount else 0),

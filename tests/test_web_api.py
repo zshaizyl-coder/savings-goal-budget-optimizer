@@ -180,7 +180,17 @@ class WebApiTests(unittest.TestCase):
         payload = self.client.get("/api/v1/categories/review", headers=headers).json()
         self.assertIn("审核优先级", payload["meaning"])
         self.assertNotIn("不必要", payload["meaning"])
+        self.assertGreater(payload["summary"]["consumption_count"], 0)
+        self.assertGreater(payload["summary"]["consumption_amount_minor"], 0)
         self.assertGreater(payload["summary"]["current_other_count"], 0)
+        self.assertAlmostEqual(
+            payload["summary"]["current_other_count_ratio"],
+            payload["summary"]["current_other_count"] / payload["summary"]["consumption_count"],
+        )
+        self.assertAlmostEqual(
+            payload["summary"]["current_other_amount_ratio"],
+            payload["summary"]["current_other_amount_minor"] / payload["summary"]["consumption_amount_minor"],
+        )
         self.assertTrue(payload["items"])
         self.assertIn("representative_transaction_id", payload["items"][0])
         self.assertIn("merchant_hint", payload["items"][0])

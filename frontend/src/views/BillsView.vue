@@ -27,8 +27,8 @@
         <div class="card"><span class="muted">退款</span><div class="metric">{{ report.refund_rows }} 笔</div></div>
         <div class="card"><span class="muted">不计入消费的转账</span><div class="metric">{{ report.transfer_rows }} 笔</div></div>
         <div class="card">
-          <span class="muted">当前待确认分类金额</span>
-          <div class="metric">{{ formatRatio(reviewSummary?.current_other_amount_ratio ?? report.uncategorized_consumption_amount_ratio) }}</div>
+          <span class="muted">消费中待分类金额占比</span>
+          <div class="metric">{{ liveAmountRatio }}</div>
           <small class="table-help">导入时初始比例 {{ formatRatio(report.uncategorized_consumption_amount_ratio) }}</small>
         </div>
       </div>
@@ -40,8 +40,8 @@
         <el-descriptions v-if="report" border :column="4" class="section compact-section">
           <el-descriptions-item label="有效记录">{{ report.total_rows }}</el-descriptions-item>
           <el-descriptions-item label="其他业务类型">{{ report.unknown_flow_rows }}</el-descriptions-item>
-          <el-descriptions-item label="导入时初始待分类">{{ formatRatio(report.uncategorized_consumption_ratio) }}</el-descriptions-item>
-          <el-descriptions-item label="当前待分类">{{ formatRatio(reviewSummary?.current_other_count_ratio) }}</el-descriptions-item>
+          <el-descriptions-item label="导入时消费待分类">{{ formatRatio(report.uncategorized_consumption_ratio) }}</el-descriptions-item>
+          <el-descriptions-item label="当前消费待分类">{{ liveCountSummary }}</el-descriptions-item>
           <el-descriptions-item label="账单范围" :span="4">{{ localDate(report.earliest_transaction_time) }} 至 {{ localDate(report.latest_transaction_time) }}</el-descriptions-item>
         </el-descriptions>
         <h4>历史导入</h4>
@@ -55,7 +55,7 @@
       <el-collapse-item name="classification">
         <template #title><span>可选：提高分类准确度</span><el-tag v-if="reviewSummary" class="collapse-tag" type="info">剩余 {{ reviewSummary.current_other_count }} 笔</el-tag></template>
         <div class="optional-intro">
-          <div><h3>不用把所有交易逐笔分类</h3><p class="muted">系统已经按相同商户分组。优先确认金额较大的组；看不懂或不确定的记录可以继续保留为“其他 / 待确认消费”。</p></div>
+          <div><h3>不用把所有交易逐笔分类</h3><p class="muted">待分类比例只统计消费交易，不包含退款、转账、充值和提现。系统已经按相同商户分组；看不懂或不确定的记录可以继续保留为“其他 / 待确认消费”。</p></div>
           <div class="actions" v-if="deepseek?.ready"><el-button :loading="aiLoading" @click="requestSuggestions('A')">AI 辅助分析高影响项</el-button><el-button text :loading="aiLoading" @click="requestSuggestions('B')">继续分析其余建议项</el-button></div>
         </div>
         <el-alert :type="deepseek?.ready ? 'success' : 'info'" :closable="false" :title="deepseek?.ready ? (deepseek.web_search_ready ? 'AI 已启用公开商户检索；只搜索商户短名称，候选仍需你确认。' : 'AI 会使用品牌常识给出候选；尚未配置公开商户检索。') : '未配置 AI 也不影响总消费、预测和预算主流程。'"/>
@@ -80,7 +80,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api } from '../api/client.js'
 import { formatMoney } from '../utils/money.js'
@@ -97,6 +97,12 @@ const reviews = ref([])
 const reviewSummary = ref()
 const deepseek = ref()
 const formatRatio = value => `${((value || 0) * 100).toFixed(1)}%`
+const liveAmountRatio = computed(() => reviewSummary.value
+  ? formatRatio(reviewSummary.value.current_other_amount_ratio)
+  : '正在计算')
+const liveCountSummary = computed(() => reviewSummary.value
+  ? `${reviewSummary.value.current_other_count} / ${reviewSummary.value.consumption_count} 笔（${formatRatio(reviewSummary.value.current_other_count_ratio)}）`
+  : '正在计算')
 const tierName = value => ({ A: '优先核对', B: '建议核对', C: '可暂时保留' }[value] || value)
 const statusName = value => ({ completed: '导入完成', completed_with_warnings: '已导入，有提示', duplicate_file: '已导入过' }[value] || value)
 
