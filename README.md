@@ -1,6 +1,59 @@
 # 面向储蓄目标的个性化消费预测与动态预算优化系统
 
-本科毕业设计项目。系统计划从微信、支付宝和银行卡账单中构建统一交易数据，以周为主要分析与执行周期，进行个体化消费预测、储蓄目标可行性判断、分类预算优化和滚动再规划。
+> 不只记录“钱花到哪里”，还会预测“未来可能花多少”，并围绕储蓄目标计算“接下来应该怎么花”。
+
+![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-Backend-009688?logo=fastapi&logoColor=white)
+![Vue](https://img.shields.io/badge/Vue_3-Frontend-42B883?logo=vuedotjs&logoColor=white)
+![SQLite](https://img.shields.io/badge/SQLite-Database-003B57?logo=sqlite&logoColor=white)
+![Tests](https://img.shields.io/badge/Tests-Automated-success)
+![Privacy](https://img.shields.io/badge/Privacy-Local_First-blueviolet)
+
+## 30 秒了解项目
+
+这是一个以**真实个人账单、消费预测和储蓄目标**为核心的智能预算系统。用户导入微信账单后，系统会完成解析、清洗、幂等去重、退款识别和消费分类；随后按自然周分析消费规律，预测未来消费，并结合当前存款、收入、目标金额和截止日期判断储蓄目标是否可行，生成可解释的分类预算。当发生超支、临时收入或计划外支出时，系统能够保留旧方案并滚动生成新版本。
+
+它与普通记账应用的区别在于：**传统应用主要解释已经发生的消费，本项目进一步把历史账单转化为未来消费基线、储蓄可行性判断和可执行预算。**
+
+## 核心亮点
+
+| 能力 | 项目实现 |
+| --- | --- |
+| 真实账单数据管道 | 支持微信 Excel 账单解析、清洗、退款处理、同源幂等和 SQLite 持久化 |
+| 隐私友好的混合分类 | 结合集中规则、公共品牌知识、可选 DeepSeek 候选、豆包公开商户检索与用户确认；AI 不直接篡改真实标签 |
+| 周度消费预测 | 使用统一无泄漏数据集和滚动回测比较模型，以真实误差而不是模型复杂度选择生产方案 |
+| 储蓄目标可行性 | 根据存款、收入、预测消费和目标期限，返回可行性、资金缺口及调整建议 |
+| 个性化预算优化 | 使用 SciPy SLSQP，在固定支出、最低预算和调整意愿等约束下生成周×类别预算 |
+| 动态滚动再规划 | 记录超支、临时收入等财务事件，基于旧计划生成新版本，并保留完整版本链 |
+| 可解释与可复现 | 金额统一使用整数分；模型、数据集、规则和预算方案均有版本；实验结论来自真实运行结果 |
+| 完整 Web 闭环 | Vue 3 前端与 FastAPI 后端覆盖导入、分析、目标、预算、执行反馈和历史方案 |
+
+## 系统工作流
+
+```mermaid
+flowchart LR
+    A[导入微信账单] --> B[解析·清洗·去重]
+    B --> C[规则 + AI候选 + 人工确认]
+    C --> D[日/周/月消费分析]
+    D --> E[周度消费预测]
+    E --> F[储蓄目标可行性判断]
+    F --> G[约束预算优化]
+    G --> H[实际消费与财务事件]
+    H --> I[滚动再规划]
+    I --> G
+```
+
+## 技术架构
+
+```text
+Vue 3 + Element Plus + ECharts
+                ↓
+          FastAPI REST API
+                ↓
+业务服务 ── 消费分析 ── 预测 ── 优化 ── 滚动再规划
+                ↓
+       SQLAlchemy 2.x + SQLite
+```
 
 ## 当前状态
 
